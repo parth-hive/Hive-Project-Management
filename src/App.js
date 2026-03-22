@@ -149,6 +149,9 @@ const Icon = {
   UserPlus: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="5" r="3" stroke="currentColor" strokeWidth="1.4" fill="none"/><path d="M1 14c0-3.3 2.2-5 5-5s5 1.7 5 5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round"/><path d="M12 6v4M10 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   Trash:    () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M6 6.5v4M8 6.5v4M3 4l.8 7.2a1 1 0 001 .8h4.4a1 1 0 001-.8L11 4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   Refresh:  () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M12 7A5 5 0 112 7" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round"/><path d="M12 3v4h-4" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  Bell:     () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5a4 4 0 014 4v3l1 1H2l1-1v-3a4 4 0 014-4z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/><path d="M5.5 11.5a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>,
+  Track:    () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" fill="none"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  OffTrack: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" fill="none"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
 };
 
 const STATUS_COLORS = {
@@ -269,6 +272,21 @@ function isOverdue(d) {
   if (!d) return false;
   return new Date(d) < new Date() && new Date(d).toDateString() !== new Date().toDateString();
 }
+function daysUntil(d) {
+  if (!d) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const deadline = new Date(d); deadline.setHours(0, 0, 0, 0);
+  return Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+}
+function deadlineLabel(d) {
+  if (!d) return null;
+  const days = daysUntil(d);
+  if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "var(--danger)", urgent: true };
+  if (days === 0) return { text: "Due today", color: "var(--danger)", urgent: true };
+  if (days === 1) return { text: "1 day left", color: "var(--danger)", urgent: true };
+  if (days <= 3) return { text: `${days} days left`, color: "var(--warning, #B45309)", urgent: false };
+  return { text: `${days} days left`, color: "var(--text3)", urgent: false };
+}
 
 function Toast({ msg, type, onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, []);
@@ -297,11 +315,12 @@ function StatusPill({ status }) {
 }
 
 // ── Task Modal ────────────────────────────────────────────────────────────────
-function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddComment }) {
+function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddComment, onUpdateTrack, onToggleAttention }) {
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
   const isAdmin = currentUser.role === "admin";
   const memberName = members.find(m => m.id === task.assigned_to)?.name || task.assigned_to;
+  const dl = task.deadline ? deadlineLabel(task.deadline) : null;
 
   async function changeStatus(s) {
     setSaving(true); await onUpdateStatus(task.id, s); setSaving(false);
@@ -325,9 +344,9 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
         <div className="flex items-center gap-8 flex-wrap mb-16">
           <StatusPill status={task.status} />
           <span className="member-chip"><Icon.User /> {memberName}</span>
-          {task.deadline && (
-            <span className="member-chip" style={{ color: isOverdue(task.deadline) ? "var(--danger)" : "var(--text2)" }}>
-              <Icon.Clock /> {formatDate(task.deadline)}{isOverdue(task.deadline) ? " · overdue" : ""}
+          {dl && (
+            <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "#EDD5D5" : "var(--border)", background: dl.urgent ? "#FDF2F2" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
+              <Icon.Clock /> {formatDate(task.deadline)} · {dl.text}
             </span>
           )}
         </div>
@@ -349,6 +368,43 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {!isAdmin && (
+          <div className="mb-16">
+            <label>Is this task on track?</label>
+            <div className="flex gap-8">
+              <button onClick={() => onUpdateTrack(task.id, "on_track")} disabled={saving} style={{
+                padding: "7px 16px", borderRadius: 99, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                background: task.track_status === "on_track" ? "#F2FAF6" : "var(--surface2)",
+                color: task.track_status === "on_track" ? "#27664A" : "var(--text3)",
+                border: `1.5px solid ${task.track_status === "on_track" ? "#D5EDE3" : "var(--border)"}`,
+                fontWeight: 600, fontSize: 12,
+              }}><Icon.Track /> On Track</button>
+              <button onClick={() => onUpdateTrack(task.id, "off_track")} disabled={saving} style={{
+                padding: "7px 16px", borderRadius: 99, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                background: task.track_status === "off_track" ? "#FDF2F2" : "var(--surface2)",
+                color: task.track_status === "off_track" ? "#C0392B" : "var(--text3)",
+                border: `1.5px solid ${task.track_status === "off_track" ? "#EDD5D5" : "var(--border)"}`,
+                fontWeight: 600, fontSize: 12,
+              }}><Icon.OffTrack /> Off Track</button>
+            </div>
+          </div>
+        )}
+
+        {!isAdmin && (
+          <div className="mb-16">
+            <label className="check-pill" style={{ cursor: "pointer" }}>
+              <input type="checkbox" checked={!!task.needs_attention} onChange={e => onToggleAttention(task.id, e.target.checked)} style={{ display: "none" }} />
+              <span className="check-box" style={{ background: task.needs_attention ? "#FFF7ED" : "var(--surface2)", borderColor: task.needs_attention ? "#FCD34D" : "var(--border2)" }}>
+                {task.needs_attention && <span style={{ fontSize: 10 }}>✓</span>}
+              </span>
+              <span style={{ color: task.needs_attention ? "#B45309" : "var(--text2)", fontWeight: task.needs_attention ? 600 : 400 }}>
+                🔔 Needs Admin Attention
+              </span>
+            </label>
+            {task.needs_attention && <div style={{ fontSize: 11, color: "#B45309", marginTop: 6, marginLeft: 28 }}>Admin has been notified.</div>}
           </div>
         )}
 
@@ -550,23 +606,44 @@ function AddMemberModal({ existingUsers, onClose, onAdd }) {
 // ── Task Card ─────────────────────────────────────────────────────────────────
 function TaskCard({ task, members, onClick }) {
   const memberName = members.find(m => m.id === task.assigned_to)?.name || task.assigned_to;
+  const dl = task.deadline ? deadlineLabel(task.deadline) : null;
+
+  const trackColors = {
+    "on_track":  { bg: "#F2FAF6", border: "#D5EDE3", text: "#27664A" },
+    "off_track": { bg: "#FDF2F2", border: "#EDD5D5", text: "#C0392B" },
+  };
+
   return (
     <div className={`task-card fadein ${task.urgent ? "urgent" : ""}`} onClick={onClick}>
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-8 flex-wrap">
           <StatusPill status={task.status} />
           {task.urgent && <span className="tag tag-urgent"><Icon.Urgent /> Urgent</span>}
+          {task.needs_attention && (
+            <span className="tag" style={{ background: "#FFF7ED", color: "#B45309", border: "1px solid #FCD34D" }}>
+              <Icon.Bell /> Needs Attention
+            </span>
+          )}
+          {task.track_status && (
+            <span className="tag" style={trackColors[task.track_status] ? { background: trackColors[task.track_status].bg, color: trackColors[task.track_status].text, border: `1px solid ${trackColors[task.track_status].border}` } : {}}>
+              {task.track_status === "on_track" ? <><Icon.Track /> On Track</> : <><Icon.OffTrack /> Off Track</>}
+            </span>
+          )}
         </div>
         <span className="text-sm" style={{ fontSize: 11 }}>#{task.id}</span>
       </div>
+
       <div style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 17, marginBottom: 6, lineHeight: 1.4 }}>{task.title}</div>
       {task.description && <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{task.description}</div>}
-      <div className="flex items-center justify-between" style={{ marginTop: 10 }}>
-        <div className="flex items-center gap-8">
-          <span className="member-chip"><Icon.User /> {memberName}</span>
-          {task.comments?.length > 0 && <span className="member-chip"><Icon.Comment /> {task.comments.length}</span>}
-        </div>
-        {task.deadline && <span style={{ fontSize: 11, color: isOverdue(task.deadline) ? "var(--danger)" : "var(--text3)" }}><Icon.Clock /> {formatDate(task.deadline)}</span>}
+
+      <div className="flex items-center gap-8 flex-wrap" style={{ marginTop: 10 }}>
+        <span className="member-chip"><Icon.User /> {memberName}</span>
+        {task.comments?.length > 0 && <span className="member-chip"><Icon.Comment /> {task.comments.length}</span>}
+        {dl && (
+          <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "#EDD5D5" : "var(--border)", background: dl.urgent ? "#FDF2F2" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
+            <Icon.Clock /> {formatDate(task.deadline)} · {dl.text}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -764,6 +841,21 @@ export default function App() {
     await fetchTasks(); showToast("Completed tasks cleared.");
   }
 
+  async function updateTrack(taskId, track_status) {
+    await sb(`tasks?id=eq.${taskId}`, { method: "PATCH", prefer: "return=representation", body: JSON.stringify({ track_status }) });
+    const updated = await fetchTasks();
+    const fresh = (updated || []).find(t => t.id === taskId);
+    if (fresh && selectedTask?.id === taskId) setSelectedTask(fresh);
+  }
+
+  async function toggleAttention(taskId, needs_attention) {
+    await sb(`tasks?id=eq.${taskId}`, { method: "PATCH", prefer: "return=representation", body: JSON.stringify({ needs_attention }) });
+    const updated = await fetchTasks();
+    const fresh = (updated || []).find(t => t.id === taskId);
+    if (fresh && selectedTask?.id === taskId) setSelectedTask(fresh);
+    if (needs_attention) showToast("Admin has been notified ✓");
+  }
+
   async function resetPassword(userId, pw) {
     const hash = await hashPassword(pw);
     await sb(`users?id=eq.${encodeURIComponent(userId)}`, { method: "PATCH", prefer: "return=representation", body: JSON.stringify({ password_hash: hash }) });
@@ -872,7 +964,7 @@ export default function App() {
   }
 
   const navItems = isAdmin
-    ? [{ id: "overview", label: "Overview", icon: <Icon.Overview /> }, { id: "tasks", label: "All Tasks", icon: <Icon.Task /> }]
+    ? [{ id: "overview", label: "Overview", icon: <Icon.Overview /> }, { id: "tasks", label: "All Tasks", icon: <Icon.Task /> }, { id: "attention", label: "Needs Attention", icon: <Icon.Bell /> }]
     : [{ id: "tasks", label: "My Tasks", icon: <Icon.Task /> }];
 
   return (
@@ -921,6 +1013,23 @@ export default function App() {
 
           {!loading && page === "overview" && isAdmin && <AdminOverview tasks={tasks} members={members} />}
 
+          {!loading && page === "attention" && isAdmin && (
+            <div className="fadein">
+              <div className="page-header">
+                <div>
+                  <div className="page-title"><em>Needs Attention</em></div>
+                  <div className="subtitle">{tasks.filter(t => t.needs_attention).length} task{tasks.filter(t => t.needs_attention).length !== 1 ? "s" : ""} flagged by members</div>
+                </div>
+              </div>
+              {tasks.filter(t => t.needs_attention).length === 0
+                ? <div className="empty"><div className="empty-icon">✅</div><div className="empty-label">No tasks need your attention</div></div>
+                : tasks.filter(t => t.needs_attention).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(t => (
+                    <TaskCard key={t.id} task={t} members={members} onClick={() => setSelectedTask(t)} />
+                  ))
+              }
+            </div>
+          )}
+
           {!loading && page === "tasks" && (
             <div className="fadein">
               <div className="page-header">
@@ -968,7 +1077,7 @@ export default function App() {
       {showReset && <ResetPasswordModal users={users} onClose={() => setShowReset(false)} onReset={resetPassword} />}
       {showRename && <RenameMembersModal users={members} onClose={() => setShowRename(false)} onRename={renameMembers} />}
       {showAddMember && <AddMemberModal existingUsers={users} onClose={() => setShowAddMember(false)} onAdd={addMember} />}
-      {selectedTask && <TaskModal task={selectedTask} currentUser={currentUser} members={members} onClose={() => setSelectedTask(null)} onUpdateStatus={updateStatus} onAddComment={addComment} />}
+      {selectedTask && <TaskModal task={selectedTask} currentUser={currentUser} members={members} onClose={() => setSelectedTask(null)} onUpdateStatus={updateStatus} onAddComment={addComment} onUpdateTrack={updateTrack} onToggleAttention={toggleAttention} />}
     </>
   );
 }
