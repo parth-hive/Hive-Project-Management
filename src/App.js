@@ -930,7 +930,7 @@ export default function App() {
   }
 
   async function createTask(form) {
-    await sb("tasks", { method: "POST", prefer: "return=representation", body: JSON.stringify({ title: form.title, description: form.description || null, deadline: form.deadline || null, urgent: form.urgent, assigned_to: form.assignedTo, status: "not started", created_by: currentUser.id }) });
+    await sb("tasks", { method: "POST", prefer: "return=representation", body: JSON.stringify({ title: form.title, description: form.description || null, deadline: form.deadline || null, urgent: form.urgent, assigned_to: form.assignedTo, status: "not started" }) });
     await fetchTasks(); setShowCreate(false); showToast("Task created!");
     // Notify the assigned member
     const assignedMember = users.find(u => u.id === form.assignedTo);
