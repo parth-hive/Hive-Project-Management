@@ -147,6 +147,7 @@ const Icon = {
   Overview: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" fill="none"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" fill="none"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" fill="none"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>,
   Edit:     () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/><path d="M8 4l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   UserPlus: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="5" r="3" stroke="currentColor" strokeWidth="1.4" fill="none"/><path d="M1 14c0-3.3 2.2-5 5-5s5 1.7 5 5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round"/><path d="M12 6v4M10 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  UserMinus: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="5" r="3" stroke="currentColor" strokeWidth="1.4" fill="none"/><path d="M1 14c0-3.3 2.2-5 5-5s5 1.7 5 5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round"/><path d="M10 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   Trash:    () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M6 6.5v4M8 6.5v4M3 4l.8 7.2a1 1 0 001 .8h4.4a1 1 0 001-.8L11 4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   Refresh:  () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M12 7A5 5 0 112 7" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round"/><path d="M12 3v4h-4" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   Bell:     () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5a4 4 0 014 4v3l1 1H2l1-1v-3a4 4 0 014-4z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/><path d="M5.5 11.5a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>,
@@ -315,9 +316,10 @@ function StatusPill({ status }) {
 }
 
 // ── Task Modal ────────────────────────────────────────────────────────────────
-function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddComment, onUpdateTrack, onToggleAttention }) {
+function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddComment, onUpdateTrack, onToggleAttention, onDeleteTask }) {
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const isAdmin = currentUser.role === "admin";
   const memberName = members.find(m => m.id === task.assigned_to)?.name || task.assigned_to;
   const dl = task.deadline ? deadlineLabel(task.deadline) : null;
@@ -329,6 +331,9 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
     if (!comment.trim()) return;
     setSaving(true); await onAddComment(task.id, comment.trim()); setComment(""); setSaving(false);
   }
+  async function handleDelete() {
+    setSaving(true); await onDeleteTask(task.id); setSaving(false);
+  }
 
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -338,7 +343,26 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
             {task.urgent && <span className="tag tag-urgent"><Icon.Urgent /> Urgent</span>}
             <span>{task.title}</span>
           </div>
-          <button className="btn-ghost" style={{ padding: "6px 12px" }} onClick={onClose}>✕</button>
+          <div className="flex gap-8 items-center">
+            {isAdmin && !confirmDelete && (
+              <button className="btn-danger" style={{ padding: "6px 12px", display: "flex", alignItems: "center", gap: 5, fontSize: 12 }}
+                onClick={() => setConfirmDelete(true)}>
+                <Icon.Trash /> Delete
+              </button>
+            )}
+            {isAdmin && confirmDelete && (
+              <div className="flex gap-8 items-center">
+                <span style={{ fontSize: 12, color: "var(--danger)", fontWeight: 500 }}>Sure?</span>
+                <button className="btn-danger" style={{ padding: "6px 12px", fontSize: 12 }} onClick={handleDelete} disabled={saving}>
+                  {saving ? "Deleting…" : "Yes, Delete"}
+                </button>
+                <button className="btn-ghost" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setConfirmDelete(false)}>
+                  Cancel
+                </button>
+              </div>
+            )}
+            <button className="btn-ghost" style={{ padding: "6px 12px" }} onClick={onClose}>✕</button>
+          </div>
         </div>
 
         <div className="flex items-center gap-8 flex-wrap mb-16">
@@ -699,6 +723,79 @@ function AdminOverview({ tasks, members, onSelectMember }) {
   );
 }
 
+// ── Delete Member Modal ───────────────────────────────────────────────────────
+function DeleteMemberModal({ users, tasks, onClose, onDelete }) {
+  const [sel, setSel] = useState(users[0]?.id || "");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const memberTasks = tasks.filter(t => t.assigned_to === sel);
+  const selectedMember = users.find(u => u.id === sel);
+  const isConfirmed = confirm.trim() === sel;
+
+  async function submit() {
+    if (!isConfirmed) { setErr(`Type "${sel}" to confirm deletion.`); return; }
+    setSaving(true);
+    try {
+      await onDelete(sel);
+      onClose();
+    } catch (e) { setErr(e.message); setSaving(false); }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal fadein">
+        <div className="modal-title" style={{ color: "var(--danger)" }}>
+          <Icon.UserMinus /> Remove Member
+        </div>
+
+        <div className="field">
+          <label>Select Member</label>
+          <select value={sel} onChange={e => { setSel(e.target.value); setConfirm(""); setErr(""); }}>
+            {users.map(u => <option key={u.id} value={u.id}>{u.id} · {u.name}</option>)}
+          </select>
+        </div>
+
+        {selectedMember && (
+          <div style={{ background: "var(--danger-dim)", border: "1px solid rgba(192,57,43,.2)", borderRadius: 8, padding: "14px 16px", marginBottom: 20 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 6 }}>
+              {selectedMember.name} <span style={{ color: "var(--text3)", fontSize: 13 }}>({sel})</span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
+              This will permanently delete this member and{" "}
+              <strong style={{ color: "var(--danger)" }}>
+                {memberTasks.length} task{memberTasks.length !== 1 ? "s" : ""}
+              </strong>{" "}
+              assigned to them. This action cannot be undone.
+            </div>
+          </div>
+        )}
+
+        <div className="field">
+          <label>Type <strong>{sel}</strong> to confirm</label>
+          <input
+            placeholder={sel}
+            value={confirm}
+            onChange={e => { setConfirm(e.target.value); setErr(""); }}
+            style={{ borderColor: confirm && !isConfirmed ? "var(--danger)" : undefined }}
+          />
+        </div>
+
+        {err && <div style={{ color: "var(--danger)", fontSize: 12, marginBottom: 14 }}>{err}</div>}
+
+        <div className="flex gap-8" style={{ justifyContent: "flex-end" }}>
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn-danger" onClick={submit} disabled={saving || !isConfirmed}
+            style={{ opacity: isConfirmed ? 1 : 0.5 }}>
+            {saving ? "Removing…" : "Remove Member"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -714,6 +811,7 @@ export default function App() {
   const [showReset, setShowReset] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showDeleteMember, setShowDeleteMember] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [filterMember, setFilterMember] = useState("all");
   const [toast, setToast] = useState(null);
@@ -856,6 +954,13 @@ export default function App() {
     await fetchTasks(); showToast("Completed tasks cleared.");
   }
 
+  async function deleteTask(taskId) {
+    await sb(`tasks?id=eq.${taskId}`, { method: "DELETE", prefer: "return=minimal" });
+    await fetchTasks();
+    setSelectedTask(null);
+    showToast("Task deleted.");
+  }
+
   async function updateTrack(taskId, track_status) {
     await sb(`tasks?id=eq.${taskId}`, { method: "PATCH", prefer: "return=representation", body: JSON.stringify({ track_status }) });
     const updated = await fetchTasks();
@@ -889,6 +994,15 @@ export default function App() {
     const hash = await hashPassword(password);
     await sb("users", { method: "POST", prefer: "return=representation", body: JSON.stringify({ id, name, role, password_hash: hash }) });
     await fetchUsers(); showToast(`${name} added as ${id}`);
+  }
+
+  async function deleteMember(userId) {
+    // Delete all tasks assigned to this member first
+    await sb(`tasks?assigned_to=eq.${encodeURIComponent(userId)}`, { method: "DELETE", prefer: "return=minimal" });
+    // Then delete the user
+    await sb(`users?id=eq.${encodeURIComponent(userId)}`, { method: "DELETE", prefer: "return=minimal" });
+    await Promise.all([fetchUsers(), fetchTasks()]);
+    showToast(`Member ${userId} removed.`);
   }
 
   async function markSeen(taskId) {
@@ -1042,6 +1156,7 @@ export default function App() {
               <div className="nav-pill" onClick={() => setShowReset(true)}><Icon.Key /> <span>Reset Password</span></div>
               <div className="nav-pill" onClick={() => setShowRename(true)}><Icon.Edit /> <span>Rename Members</span></div>
               <div className="nav-pill" onClick={() => setShowAddMember(true)}><Icon.UserPlus /> <span>Add Member</span></div>
+              <div className="nav-pill" onClick={() => setShowDeleteMember(true)} style={{ color: "var(--danger)" }}><Icon.UserMinus /> <span>Remove Member</span></div>
             </>
           )}
 
@@ -1192,7 +1307,8 @@ export default function App() {
       {showReset && <ResetPasswordModal users={users} onClose={() => setShowReset(false)} onReset={resetPassword} />}
       {showRename && <RenameMembersModal users={members} onClose={() => setShowRename(false)} onRename={renameMembers} />}
       {showAddMember && <AddMemberModal existingUsers={users} onClose={() => setShowAddMember(false)} onAdd={addMember} />}
-      {selectedTask && <TaskModal task={selectedTask} currentUser={currentUser} members={members} onClose={() => setSelectedTask(null)} onUpdateStatus={updateStatus} onAddComment={addComment} onUpdateTrack={updateTrack} onToggleAttention={toggleAttention} />}
+      {showDeleteMember && <DeleteMemberModal users={members} tasks={tasks} onClose={() => setShowDeleteMember(false)} onDelete={deleteMember} />}
+      {selectedTask && <TaskModal task={selectedTask} currentUser={currentUser} members={members} onClose={() => setSelectedTask(null)} onUpdateStatus={updateStatus} onAddComment={addComment} onUpdateTrack={updateTrack} onToggleAttention={toggleAttention} onDeleteTask={deleteTask} />}
 
       {showAttentionPopup && isAdmin && (
         <div className="modal-backdrop" onClick={() => setShowAttentionPopup(false)}>
