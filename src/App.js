@@ -257,8 +257,10 @@ const STYLES = `
     .sidebar{width:60px;padding:16px 8px}
     .sidebar-logo-text,.sidebar-logo-sub,.nav-pill span,.sidebar-section{display:none}
     .nav-pill{padding:10px;justify-content:center}
-    .main-content{padding:24px 18px}
+    .main-content{padding:20px 16px}
     .sidebar-logo{justify-content:center}
+    .page-title{font-size:22px}
+    .grid-2{grid-template-columns:1fr}
   }
   .toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:12px 20px;border-radius:var(--radius);font-size:13px;z-index:200;animation:fadeIn .2s ease;box-shadow:0 8px 24px rgba(26,25,22,.2)}
   .toast.error{background:var(--danger)}
@@ -681,7 +683,7 @@ function AdminOverview({ tasks, members, onSelectMember }) {
   return (
     <div className="fadein">
       <div className="page-header"><div><div className="page-title"><em>Overview</em></div><div className="subtitle">{tasks.length} total tasks across all members</div></div></div>
-      <div className="grid-4 mb-16">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         {[{ label: "Total", num: tasks.length, color: "var(--text)" }, { label: "Completed", num: done, color: "var(--success)" }, { label: "In Progress", num: inprog, color: "var(--info)" }, { label: "Urgent", num: urgent, color: "var(--danger)" }].map(s => (
           <div className="overview-stat" key={s.label}>
             <div className="overview-stat-num" style={{ color: s.color }}>{s.num}</div>
@@ -701,20 +703,25 @@ function AdminOverview({ tasks, members, onSelectMember }) {
             onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border2)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(26,25,22,.06)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
           >
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-8">
-                <span className="member-chip"><Icon.User /> {m.id}</span>
-                <span style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 16 }}>{m.name}</span>
-              </div>
-              <div className="flex items-center gap-8">
-                <span style={{ fontSize: 12, color: "var(--text3)" }}>{md}/{mt.length} completed · {pct}%</span>
-                <span style={{ fontSize: 11, color: "var(--text3)", fontFamily: "'Inter',sans-serif" }}>View tasks →</span>
-              </div>
+            {/* Top row: ID chip + name */}
+            <div className="flex items-center gap-8 mb-8" style={{ flexWrap: "wrap" }}>
+              <span className="member-chip" style={{ flexShrink: 0 }}><Icon.User /> {m.id}</span>
+              <span style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 16, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
             </div>
-            <div className="progress-bar-bg"><div className="progress-bar-fill" style={{ width: `${pct}%` }} /></div>
-            <div className="flex gap-8 flex-wrap mt-8">
-              {STATUS_LABELS.map(s => { const cnt = mt.filter(t => t.status === s).length; if (!cnt) return null; const c = STATUS_COLORS[s]; return <span key={s} className="tag" style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>{cnt} {s}</span>; })}
-              {mt.filter(t => t.urgent).length > 0 && <span className="tag tag-urgent"><Icon.Urgent /> {mt.filter(t => t.urgent).length} urgent</span>}
+
+            {/* Progress bar */}
+            <div className="progress-bar-bg mb-8"><div className="progress-bar-fill" style={{ width: `${pct}%` }} /></div>
+
+            {/* Bottom row: stats + link */}
+            <div className="flex items-center justify-between" style={{ flexWrap: "wrap", gap: 6 }}>
+              <div className="flex gap-8 flex-wrap">
+                {STATUS_LABELS.map(s => { const cnt = mt.filter(t => t.status === s).length; if (!cnt) return null; const c = STATUS_COLORS[s]; return <span key={s} className="tag" style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>{cnt} {s}</span>; })}
+                {mt.filter(t => t.urgent).length > 0 && <span className="tag tag-urgent"><Icon.Urgent /> {mt.filter(t => t.urgent).length} urgent</span>}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
+                <span style={{ fontSize: 11, color: "var(--text3)" }}>{md}/{mt.length} completed · {pct}%</span>
+                <span style={{ fontSize: 11, color: "var(--text3)" }}>View tasks →</span>
+              </div>
             </div>
           </div>
         );
