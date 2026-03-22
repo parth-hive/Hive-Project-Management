@@ -650,7 +650,7 @@ function TaskCard({ task, members, onClick }) {
 }
 
 // ── Admin Overview ────────────────────────────────────────────────────────────
-function AdminOverview({ tasks, members }) {
+function AdminOverview({ tasks, members, onSelectMember }) {
   const done = tasks.filter(t => t.status === "completed").length;
   const inprog = tasks.filter(t => t.status === "in progress").length;
   const urgent = tasks.filter(t => t.urgent).length;
@@ -671,13 +671,21 @@ function AdminOverview({ tasks, members }) {
         const md = mt.filter(t => t.status === "completed").length;
         const pct = mt.length ? Math.round((md / mt.length) * 100) : 0;
         return (
-          <div key={m.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 10 }}>
+          <div key={m.id}
+            onClick={() => onSelectMember(m.id)}
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 10, cursor: "pointer", transition: "border-color .15s, box-shadow .15s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border2)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(26,25,22,.06)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+          >
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-8">
                 <span className="member-chip"><Icon.User /> {m.id}</span>
                 <span style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 16 }}>{m.name}</span>
               </div>
-              <span style={{ fontSize: 12, color: "var(--text3)" }}>{md}/{mt.length} completed · {pct}%</span>
+              <div className="flex items-center gap-8">
+                <span style={{ fontSize: 12, color: "var(--text3)" }}>{md}/{mt.length} completed · {pct}%</span>
+                <span style={{ fontSize: 11, color: "var(--text3)", fontFamily: "'Inter',sans-serif" }}>View tasks →</span>
+              </div>
             </div>
             <div className="progress-bar-bg"><div className="progress-bar-fill" style={{ width: `${pct}%` }} /></div>
             <div className="flex gap-8 flex-wrap mt-8">
@@ -1050,7 +1058,7 @@ export default function App() {
         <main className="main-content scrollbar">
           {loading && <div style={{ textAlign: "center", padding: "80px 0" }}><div className="spinner" /></div>}
 
-          {!loading && page === "overview" && isAdmin && <AdminOverview tasks={tasks} members={members} />}
+          {!loading && page === "overview" && isAdmin && <AdminOverview tasks={tasks} members={members} onSelectMember={(memberId) => { setFilterMember(memberId); setPage("tasks"); }} />}
 
           {!loading && page === "attention" && isAdmin && (
             <div className="fadein">
