@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 
 // ── Supabase ──────────────────────────────────────────────────────────────────
-const SUPABASE_URL = "https://czoalmwnofyrgqtpiwgm.supabase.co";
-const SUPABASE_KEY = "sb_publishable_KLcYVzUUUhJFeiwjDg_BHg_lcsE0CKf";
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
 
 async function sb(path, options = {}) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -65,7 +65,7 @@ async function checkBiometricAvailable() {
   if (isIOS) return false;
   if (!window.PublicKeyCredential) return false;
   try {
-    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
   } catch { return false; }
 }
 
