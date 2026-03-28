@@ -1248,14 +1248,20 @@ export default function App() {
             </>
           )}
 
+          {!isAdmin && (
+            <>
+              <div className="sidebar-section">Account</div>
+              <div className="nav-pill" onClick={() => setShowChangePassword(true)} title="Change Password"><Icon.Key /> <span>Change Password</span></div>
+            </>
+          )}
+
           <div className="sidebar-bottom">
             <div style={{ padding: "0 8px", marginBottom: 10 }}>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 15 }}>{currentUser.name}</div>
               <div style={{ fontSize: 11, color: "var(--text3)" }}>{currentUser.id}</div>
             </div>
-            <div className="nav-pill" onClick={() => setShowChangePassword(true)}><Icon.Key /> <span>Change Password</span></div>
-            <div className="nav-pill" onClick={refreshAll}><Icon.Refresh /> <span>Refresh</span></div>
-            <div className="nav-pill" onClick={logout}><Icon.Logout /> <span>Sign Out</span></div>
+            <div className="nav-pill" onClick={refreshAll} title="Refresh"><Icon.Refresh /> <span>Refresh</span></div>
+            <div className="nav-pill" onClick={logout} title="Sign Out"><Icon.Logout /> <span>Sign Out</span></div>
           </div>
         </aside>
 
