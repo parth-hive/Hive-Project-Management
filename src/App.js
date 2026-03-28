@@ -726,6 +726,38 @@ function AdminOverview({ tasks, members, onSelectMember }) {
   );
 }
 
+// ── Change Password Inline (used inside Settings page) ────────────────────────
+function ChangePasswordInline({ currentUser, onSave, showToast }) {
+  const [pw, setPw] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function submit() {
+    if (!pw.trim()) { setErr("Please enter a new password."); return; }
+    if (pw.trim().length < 6) { setErr("Password must be at least 6 characters."); return; }
+    if (pw.trim() !== confirm.trim()) { setErr("Passwords do not match."); return; }
+    setSaving(true);
+    try {
+      await onSave(currentUser.id, pw.trim());
+      setPw(""); setConfirm(""); setErr("");
+      showToast("Password updated successfully!");
+    } catch (e) { setErr(e.message); }
+    setSaving(false);
+  }
+
+  return (
+    <div>
+      <div className="field"><label>New Password</label><PasswordInput value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} placeholder="Enter new password" /></div>
+      <div className="field"><label>Confirm Password</label><PasswordInput value={confirm} onChange={e => { setConfirm(e.target.value); setErr(""); }} placeholder="Re-enter new password" /></div>
+      {err && <div style={{ color: "var(--danger)", fontSize: 12, marginBottom: 14 }}>{err}</div>}
+      <button className="btn-primary" onClick={submit} disabled={saving} style={{ width: "100%", padding: 12 }}>
+        {saving ? "Saving…" : "Update Password"}
+      </button>
+    </div>
+  );
+}
+
 // ── Change Password Modal (for members) ──────────────────────────────────────
 function ChangePasswordModal({ currentUser, onClose, onSave }) {
   const [pw, setPw] = useState("");
@@ -1092,6 +1124,7 @@ export default function App() {
     : [
         { id: "tasks",      label: "My Tasks",         icon: <Icon.Task /> },
         { id: "completed",  label: "Completed",        icon: <Icon.Track /> },
+        { id: "settings",   label: "Settings",         icon: <Icon.Key /> },
       ];
 
   // ── Biometric Prompt ──────────────────────────────────────────────────────
@@ -1354,6 +1387,37 @@ export default function App() {
                 ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-label">No completed tasks yet.</div></div>
                 : completedTasks.map(t => <TaskCard key={t.id} task={t} members={members} onClick={() => setSelectedTask(t)} />)
               }
+            </div>
+          )}
+
+          {!loading && page === "settings" && !isAdmin && (
+            <div className="fadein">
+              <div className="page-header">
+                <div>
+                  <div className="page-title"><em>Settings</em></div>
+                  <div className="subtitle">Manage your account</div>
+                </div>
+              </div>
+
+              {/* Profile card */}
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "20px 24px", marginBottom: 16 }}>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 11, fontWeight: 600, letterSpacing: ".08em", color: "var(--text3)", textTransform: "uppercase", marginBottom: 12 }}>Account</div>
+                <div className="flex items-center gap-12">
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--accent-dim)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon.User />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 18 }}>{currentUser.name}</div>
+                    <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 2 }}>{currentUser.id}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Change password card */}
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "20px 24px", marginBottom: 16 }}>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 11, fontWeight: 600, letterSpacing: ".08em", color: "var(--text3)", textTransform: "uppercase", marginBottom: 16 }}>Security</div>
+                <ChangePasswordInline currentUser={currentUser} onSave={resetPassword} showToast={showToast} />
+              </div>
             </div>
           )}
         </main>
