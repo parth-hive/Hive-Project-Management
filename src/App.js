@@ -28,6 +28,11 @@ async function hashPassword(password) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Only store safe fields in session — never store password_hash
+function safeUser(user) {
+  return { id: user.id, name: user.name, role: user.role };
+}
+
 // ── Session Management ────────────────────────────────────────────────────────
 const SESSION_KEY = "hiveboard_session";
 const SESSION_EXPIRY_DAYS = 30;
@@ -956,8 +961,14 @@ export default function App() {
       const bioAvail = await checkBiometricAvailable();
       setBiometricAvailable(bioAvail);
       if (saved) {
-        setSessionUser(saved);
-        setShowBiometricPrompt(true);
+        // Re-verify user still exists in DB and get fresh role
+        try {
+          const fresh = await sb(`users?id=eq.${encodeURIComponent(saved.id)}&select=id,name,role`);
+          if (!fresh || fresh.length === 0) { clearSession(); return; }
+          const verifiedUser = safeUser(fresh[0]);
+          setSessionUser(verifiedUser);
+          setShowBiometricPrompt(true);
+        } catch { clearSession(); }
       }
     }
     init();
@@ -988,8 +999,8 @@ export default function App() {
       const rows = await sb(`users?id=eq.${encodeURIComponent(loginId.trim())}&password_hash=eq.${hash}&select=*`);
       if (!rows || rows.length === 0) { setLoginErr("Invalid ID or password."); setAppLoading(false); return; }
       const user = rows[0];
-      saveSession(user);
-      await resumeSession(user);
+      saveSession(safeUser(user));
+      await resumeSession(safeUser(user));
     } catch (e) { setLoginErr("Login failed: " + e.message); }
     setAppLoading(false);
   }
