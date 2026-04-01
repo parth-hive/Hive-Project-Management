@@ -475,6 +475,21 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
           </div>
         )}
 
+        {isAdmin && task.needs_attention && (
+          <div className="mb-16" style={{ background: "#FFF7ED", border: "1px solid #FCD34D", borderRadius: 8, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div className="flex items-center gap-8">
+              <Icon.Bell />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#B45309" }}>This task needs your attention</span>
+            </div>
+            <button
+              onClick={() => onToggleAttention(task.id, false)}
+              disabled={saving}
+              style={{ padding: "6px 14px", borderRadius: 6, cursor: "pointer", background: "#fff", color: "#B45309", border: "1px solid #FCD34D", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
+              ✓ Dismiss
+            </button>
+          </div>
+        )}
+
         {task.description && (
           <div className="mb-16">
             <label>Description</label>
@@ -1336,11 +1351,24 @@ export default function App() {
                   <div className="page-title"><em>Needs Attention</em></div>
                   <div className="subtitle">{tasks.filter(t => t.needs_attention).length} task{tasks.filter(t => t.needs_attention).length !== 1 ? "s" : ""} flagged by members</div>
                 </div>
+                {tasks.filter(t => t.needs_attention).length > 1 && (
+                  <button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
+                    onClick={() => tasks.filter(t => t.needs_attention).forEach(t => toggleAttention(t.id, false))}>
+                    ✓ Dismiss All
+                  </button>
+                )}
               </div>
               {tasks.filter(t => t.needs_attention).length === 0
                 ? <div className="empty"><div className="empty-icon">✅</div><div className="empty-label">No tasks need your attention</div></div>
                 : tasks.filter(t => t.needs_attention).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(t => (
-                    <TaskCard key={t.id} task={t} members={members} onClick={() => setSelectedTask(t)} />
+                    <div key={t.id} style={{ position: "relative" }}>
+                      <TaskCard task={t} members={members} onClick={() => setSelectedTask(t)} />
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleAttention(t.id, false); }}
+                        style={{ position: "absolute", top: 12, right: 12, padding: "4px 12px", borderRadius: 6, background: "#fff", color: "#B45309", border: "1px solid #FCD34D", fontWeight: 600, fontSize: 11, cursor: "pointer", zIndex: 1 }}>
+                        ✓ Dismiss
+                      </button>
+                    </div>
                   ))
               }
             </div>
