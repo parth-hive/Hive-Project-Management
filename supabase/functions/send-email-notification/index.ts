@@ -167,9 +167,11 @@ Deno.serve(async (req) => {
         subject = `New Project: ${task.title}`;
         html = taskCreatedHtml(task);
         break;
-      case "task_updated":
-        subject = `Project Updated: ${task.title}`;
+      case "task_updated": {
+        const isCompleted = Array.isArray(changes) && changes.some((c: any) => c.field === "Status" && c.to === "completed");
+        subject = isCompleted ? `Project Completed: ${task.title}` : `Project Updated: ${task.title}`;
         html = taskUpdatedHtml(task, changes);
+      }
         break;
       case "comment_added":
         subject = `New Comment on: ${task.title}`;

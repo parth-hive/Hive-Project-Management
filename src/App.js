@@ -250,9 +250,9 @@ const STYLES = `
   .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
   .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:44px 40px;width:100%;max-width:380px;animation:fadeIn .3s ease;box-shadow:0 8px 40px rgba(26,25,22,.08)}
   .divider{height:1px;background:var(--border);margin:22px 0}
-  .overview-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:20px 24px}
-  .overview-stat-num{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:500;line-height:1}
-  .overview-stat-label{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+  .overview-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:16px 18px}
+  .overview-stat-num{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:500;line-height:1}
+  .overview-stat-label{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
   .progress-bar-bg{background:var(--surface2);border-radius:99px;height:3px;overflow:hidden}
   .progress-bar-fill{height:100%;border-radius:99px;background:var(--text);transition:width .4s ease}
   .pw-wrap{position:relative}
@@ -792,21 +792,63 @@ function TaskCard({ task, members, onClick }) {
 }
 
 // ── Admin Overview ────────────────────────────────────────────────────────────
-function AdminOverview({ tasks, members, onSelectMember }) {
+function AdminOverview({ tasks, members, onSelectMember, overviewFilter, onCardClick, onTaskClick, clearDoneTasks }) {
   const done = tasks.filter(t => t.status === "completed").length;
   const inprog = tasks.filter(t => t.status === "in progress").length;
+  const notStarted = tasks.filter(t => t.status === "not started").length;
   const urgent = tasks.filter(t => t.urgent).length;
+  const cards = [
+    { key: "total", label: "Total", num: tasks.length, color: "var(--text)" },
+    { key: "not started", label: "Not Started", num: notStarted, color: "#C0392B" },
+    { key: "in progress", label: "In Progress", num: inprog, color: "var(--info)" },
+    { key: "completed", label: "Completed", num: done, color: "var(--success)" },
+    { key: "urgent", label: "Urgent", num: urgent, color: "var(--danger)" },
+  ];
+
+  const filteredTasks = overviewFilter
+    ? overviewFilter === "total" ? tasks
+      : overviewFilter === "urgent" ? tasks.filter(t => t.urgent)
+      : tasks.filter(t => t.status === overviewFilter)
+    : null;
+
+  const filterTitle = overviewFilter
+    ? cards.find(c => c.key === overviewFilter)?.label || "Projects"
+    : null;
+
   return (
     <div className="fadein">
       <div className="page-header"><div><div className="page-title"><em>Overview</em></div><div className="subtitle">{tasks.length} total projects across all members</div></div></div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-        {[{ label: "Total", num: tasks.length, color: "var(--text)" }, { label: "Completed", num: done, color: "var(--success)" }, { label: "In Progress", num: inprog, color: "var(--info)" }, { label: "Urgent", num: urgent, color: "var(--danger)" }].map(s => (
-          <div className="overview-stat" key={s.label}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 16 }}>
+        {cards.map(s => (
+          <div className="overview-stat" key={s.key}
+            onClick={() => onCardClick(overviewFilter === s.key ? null : s.key)}
+            style={{ cursor: "pointer", outline: overviewFilter === s.key ? `2px solid ${s.color}` : "none", outlineOffset: -2, transition: "outline .15s, box-shadow .15s" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(26,25,22,.08)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; }}
+          >
             <div className="overview-stat-num" style={{ color: s.color }}>{s.num}</div>
             <div className="overview-stat-label">{s.label}</div>
           </div>
         ))}
       </div>
+
+      {filteredTasks ? (
+        <>
+          <div className="flex items-center justify-between mb-16">
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".08em" }}>{filterTitle} · {filteredTasks.length} project{filteredTasks.length !== 1 ? "s" : ""}</div>
+            {overviewFilter === "completed" && filteredTasks.length > 0 && (
+              <button className="btn-danger" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={clearDoneTasks}>
+                <Icon.Trash /> Clear All
+              </button>
+            )}
+          </div>
+          {filteredTasks.length === 0
+            ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-label">No {filterTitle.toLowerCase()} projects.</div></div>
+            : filteredTasks.map(t => <TaskCard key={t.id} task={t} members={members} onClick={() => onTaskClick(t)} />)
+          }
+        </>
+      ) : (
+        <>
       <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 14, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".08em" }}>Per Member</div>
       {members.map(m => {
         const mt = tasks.filter(t => t.assigned_to === m.id);
@@ -842,6 +884,8 @@ function AdminOverview({ tasks, members, onSelectMember }) {
           </div>
         );
       })}
+        </>
+      )}
     </div>
   );
 }
@@ -1087,6 +1131,7 @@ export default function App() {
   const [loginPw, setLoginPw] = useState("");
   const [loginErr, setLoginErr] = useState("");
   const [page, setPage] = useState("tasks");
+  const [overviewFilter, setOverviewFilter] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [showRename, setShowRename] = useState(false);
@@ -1347,7 +1392,6 @@ export default function App() {
     ? [
         { id: "overview",   label: "Overview",        icon: <Icon.Overview /> },
         { id: "tasks",      label: "All Projects",        icon: <Icon.Task /> },
-        { id: "completed",  label: "Completed",        icon: <Icon.Track /> },
         { id: "attention",  label: "Needs Attention",  icon: <Icon.Bell />, badge: attentionTasks.length },
       ]
     : [
@@ -1404,7 +1448,7 @@ export default function App() {
 
           <div className="sidebar-section">Navigation</div>
           {navItems.map(n => (
-            <div key={n.id} className={`nav-pill ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}
+            <div key={n.id} className={`nav-pill ${page === n.id ? "active" : ""}`} onClick={() => { setPage(n.id); if (n.id !== "overview") setOverviewFilter(null); }}
               style={{ position: "relative" }}>
               {n.icon}
               <span style={{ flex: 1 }}>{n.label}</span>
@@ -1453,7 +1497,7 @@ export default function App() {
         <main className="main-content scrollbar">
           {loading && <div style={{ textAlign: "center", padding: "80px 0" }}><div className="spinner" /></div>}
 
-          {!loading && page === "overview" && isAdmin && <AdminOverview tasks={tasks} members={members} onSelectMember={(memberId) => { setFilterMember(memberId); setPage("tasks"); }} />}
+          {!loading && page === "overview" && isAdmin && <AdminOverview tasks={tasks} members={members} onSelectMember={(memberId) => { setFilterMember(memberId); setPage("tasks"); }} overviewFilter={overviewFilter} onCardClick={setOverviewFilter} onTaskClick={setSelectedTask} clearDoneTasks={clearDoneTasks} />}
 
           {!loading && page === "attention" && isAdmin && (
             <div className="fadein">
