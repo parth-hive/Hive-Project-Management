@@ -181,13 +181,24 @@ const Icon = {
   Bell:     () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5a4 4 0 014 4v3l1 1H2l1-1v-3a4 4 0 014-4z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/><path d="M5.5 11.5a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>,
   Track:    () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" fill="none"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   OffTrack: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" fill="none"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  Moon:     () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12.5 7.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/></svg>,
+  Sun:      () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.75 2.75l1.06 1.06M10.19 10.19l1.06 1.06M11.25 2.75l-1.06 1.06M3.81 10.19l-1.06 1.06"/></svg>,
 };
 
-const STATUS_COLORS = {
+const STATUS_COLORS_LIGHT = {
   "not started": { bg: "#FDF2F2", border: "#EDD5D5", text: "#C0392B", dot: "#C0392B" },
   "in progress": { bg: "#F2F5FD", border: "#D5DEF0", text: "#1A4A7A", dot: "#1A4A7A" },
   "completed":   { bg: "#F2FAF6", border: "#D5EDE3", text: "#27664A", dot: "#27664A" },
 };
+const STATUS_COLORS_DARK = {
+  "not started": { bg: "rgba(192,57,43,.15)", border: "rgba(192,57,43,.3)", text: "#E74C3C", dot: "#E74C3C" },
+  "in progress": { bg: "rgba(52,152,219,.15)", border: "rgba(52,152,219,.3)", text: "#5DADE2", dot: "#5DADE2" },
+  "completed":   { bg: "rgba(39,174,96,.15)", border: "rgba(39,174,96,.3)", text: "#58D68D", dot: "#58D68D" },
+};
+function getStatusColors() {
+  return document.documentElement.getAttribute("data-theme") === "dark" ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
+}
+const STATUS_COLORS = new Proxy({}, { get: (_, key) => getStatusColors()[key] });
 const STATUS_LABELS = ["not started", "in progress", "completed"];
 
 const STYLES = `
@@ -200,6 +211,23 @@ const STYLES = `
     --danger:#C0392B;--danger-dim:rgba(192,57,43,.08);
     --success:#27664A;--info:#1A4A7A;
     --radius:6px;--radius2:10px;
+    --warn-bg:#FFF7ED;--warn-border:#FCD34D;--warn-text:#B45309;
+    --attn-bg:#FFF7ED;--attn-border:#FCD34D;--attn-text:#B45309;
+    --new-bg:#FFF5F5;--new-border:#EDD5D5;
+    --track-on-bg:#F2FAF6;--track-on-border:#D5EDE3;--track-on-text:#27664A;
+    --track-off-bg:#FDF2F2;--track-off-border:#EDD5D5;--track-off-text:#C0392B;
+  }
+  [data-theme="dark"]{
+    --bg:#141414;--surface:#1E1E1E;--surface2:#2A2A2A;--border:#333;--border2:#444;
+    --text:#E8E6E0;--text2:#A8A49C;--text3:#6B6860;
+    --accent:#E8E6E0;--accent2:#C4C0B8;--accent-dim:rgba(232,230,224,.08);
+    --danger:#E74C3C;--danger-dim:rgba(231,76,60,.12);
+    --success:#58D68D;--info:#5DADE2;
+    --warn-bg:rgba(180,131,9,.12);--warn-border:rgba(252,211,77,.25);--warn-text:#FCD34D;
+    --attn-bg:rgba(180,131,9,.12);--attn-border:rgba(252,211,77,.25);--attn-text:#FCD34D;
+    --new-bg:rgba(192,57,43,.12);--new-border:rgba(192,57,43,.3);
+    --track-on-bg:rgba(39,174,96,.12);--track-on-border:rgba(39,174,96,.25);--track-on-text:#58D68D;
+    --track-off-bg:rgba(192,57,43,.12);--track-off-border:rgba(192,57,43,.25);--track-off-text:#E74C3C;
   }
   body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
   input,textarea,select{font-family:'Inter',sans-serif;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px 14px;font-size:13px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
@@ -207,7 +235,7 @@ const STYLES = `
   input::placeholder,textarea::placeholder{color:var(--text3)}
   textarea{resize:vertical;min-height:80px;line-height:1.6}
   select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6860' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;cursor:pointer}
-  select option{background:#fff}
+  select option{background:var(--surface)}
   button{font-family:'Inter',sans-serif;font-weight:500;cursor:pointer;border:none;border-radius:var(--radius);transition:all .18s;font-size:13px}
   button:active{transform:scale(.98)}
   button:disabled{opacity:.6;cursor:not-allowed}
@@ -313,7 +341,7 @@ function deadlineLabel(d) {
   if (days < 0) return { text: `${Math.abs(days)}d overdue`, color: "var(--danger)", urgent: true };
   if (days === 0) return { text: "Due today", color: "var(--danger)", urgent: true };
   if (days === 1) return { text: "1 day left", color: "var(--danger)", urgent: true };
-  if (days <= 3) return { text: `${days} days left`, color: "var(--warning, #B45309)", urgent: false };
+  if (days <= 3) return { text: `${days} days left`, color: "var(--attn-text)", urgent: false };
   return { text: `${days} days left`, color: "var(--text3)", urgent: false };
 }
 
@@ -425,7 +453,7 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
               </div>
             ) : (
               <span className="member-chip" onClick={() => setEditingDeadline(true)}
-                style={{ cursor: "pointer", color: dl?.urgent ? "var(--danger)" : "var(--text2)", borderColor: dl?.urgent ? "#EDD5D5" : "var(--border)", background: dl?.urgent ? "#FDF2F2" : "var(--surface2)", fontWeight: dl?.urgent ? 600 : 400 }}
+                style={{ cursor: "pointer", color: dl?.urgent ? "var(--danger)" : "var(--text2)", borderColor: dl?.urgent ? "var(--track-off-border)" : "var(--border)", background: dl?.urgent ? "var(--track-off-bg)" : "var(--surface2)", fontWeight: dl?.urgent ? 600 : 400 }}
                 title="Click to edit deadline">
                 <Icon.Clock />
                 {dl ? `${formatDate(task.deadline)} · ${dl.text}` : <span style={{ color: "var(--text3)" }}>Set deadline</span>}
@@ -434,7 +462,7 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
             )
           ) : (
             dl && (
-              <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "#EDD5D5" : "var(--border)", background: dl.urgent ? "#FDF2F2" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
+              <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "var(--track-off-border)" : "var(--border)", background: dl.urgent ? "var(--track-off-bg)" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
                 <Icon.Clock /> {formatDate(task.deadline)} · {dl.text}
               </span>
             )
@@ -467,16 +495,16 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
             <div className="flex gap-8">
               <button onClick={() => onUpdateTrack(task.id, "on_track")} disabled={saving} style={{
                 padding: "7px 16px", borderRadius: 99, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-                background: task.track_status === "on_track" ? "#F2FAF6" : "var(--surface2)",
-                color: task.track_status === "on_track" ? "#27664A" : "var(--text3)",
-                border: `1.5px solid ${task.track_status === "on_track" ? "#D5EDE3" : "var(--border)"}`,
+                background: task.track_status === "on_track" ? "var(--track-on-bg)" : "var(--surface2)",
+                color: task.track_status === "on_track" ? "var(--track-on-text)" : "var(--text3)",
+                border: `1.5px solid ${task.track_status === "on_track" ? "var(--track-on-border)" : "var(--border)"}`,
                 fontWeight: 600, fontSize: 12,
               }}><Icon.Track /> On Track</button>
               <button onClick={() => onUpdateTrack(task.id, "off_track")} disabled={saving} style={{
                 padding: "7px 16px", borderRadius: 99, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-                background: task.track_status === "off_track" ? "#FDF2F2" : "var(--surface2)",
-                color: task.track_status === "off_track" ? "#C0392B" : "var(--text3)",
-                border: `1.5px solid ${task.track_status === "off_track" ? "#EDD5D5" : "var(--border)"}`,
+                background: task.track_status === "off_track" ? "var(--track-off-bg)" : "var(--surface2)",
+                color: task.track_status === "off_track" ? "var(--track-off-text)" : "var(--text3)",
+                border: `1.5px solid ${task.track_status === "off_track" ? "var(--track-off-border)" : "var(--border)"}`,
                 fontWeight: 600, fontSize: 12,
               }}><Icon.OffTrack /> Off Track</button>
             </div>
@@ -487,27 +515,27 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
           <div className="mb-16">
             <label className="check-pill" style={{ cursor: "pointer" }}>
               <input type="checkbox" checked={!!task.needs_attention} onChange={e => onToggleAttention(task.id, e.target.checked)} style={{ display: "none" }} />
-              <span className="check-box" style={{ background: task.needs_attention ? "#FFF7ED" : "var(--surface2)", borderColor: task.needs_attention ? "#FCD34D" : "var(--border2)" }}>
+              <span className="check-box" style={{ background: task.needs_attention ? "var(--attn-bg)" : "var(--surface2)", borderColor: task.needs_attention ? "var(--attn-border)" : "var(--border2)" }}>
                 {task.needs_attention && <span style={{ fontSize: 10 }}>✓</span>}
               </span>
               <span style={{ color: task.needs_attention ? "#B45309" : "var(--text2)", fontWeight: task.needs_attention ? 600 : 400 }}>
                 🔔 Needs Admin Attention
               </span>
             </label>
-            {task.needs_attention && <div style={{ fontSize: 11, color: "#B45309", marginTop: 6, marginLeft: 28 }}>Admin has been notified.</div>}
+            {task.needs_attention && <div style={{ fontSize: 11, color: "var(--attn-text)", marginTop: 6, marginLeft: 28 }}>Admin has been notified.</div>}
           </div>
         )}
 
         {isAdmin && task.needs_attention && (
-          <div className="mb-16" style={{ background: "#FFF7ED", border: "1px solid #FCD34D", borderRadius: 8, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div className="mb-16" style={{ background: "var(--attn-bg)", border: "1px solid var(--attn-border)", borderRadius: 8, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <div className="flex items-center gap-8">
               <Icon.Bell />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#B45309" }}>This project needs your attention</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--attn-text)" }}>This project needs your attention</span>
             </div>
             <button
               onClick={() => onToggleAttention(task.id, false)}
               disabled={saving}
-              style={{ padding: "6px 14px", borderRadius: 6, cursor: "pointer", background: "#fff", color: "#B45309", border: "1px solid #FCD34D", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
+              style={{ padding: "6px 14px", borderRadius: 6, cursor: "pointer", background: "var(--surface)", color: "var(--attn-text)", border: "1px solid var(--attn-border)", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
               ✓ Dismiss
             </button>
           </div>
@@ -751,8 +779,8 @@ function TaskCard({ task, members, onClick }) {
   const dl = task.deadline ? deadlineLabel(task.deadline) : null;
 
   const trackColors = {
-    "on_track":  { bg: "#F2FAF6", border: "#D5EDE3", text: "#27664A" },
-    "off_track": { bg: "#FDF2F2", border: "#EDD5D5", text: "#C0392B" },
+    "on_track":  { bg: "var(--track-on-bg)", border: "var(--track-on-border)", text: "var(--track-on-text)" },
+    "off_track": { bg: "var(--track-off-bg)", border: "var(--track-off-border)", text: "var(--track-off-text)" },
   };
 
   return (
@@ -762,7 +790,7 @@ function TaskCard({ task, members, onClick }) {
           <StatusPill status={task.status} />
           {task.urgent && <span className="tag tag-urgent"><Icon.Urgent /> Urgent</span>}
           {task.needs_attention && (
-            <span className="tag" style={{ background: "#FFF7ED", color: "#B45309", border: "1px solid #FCD34D" }}>
+            <span className="tag" style={{ background: "var(--attn-bg)", color: "var(--attn-text)", border: "1px solid var(--attn-border)" }}>
               <Icon.Bell /> Needs Attention
             </span>
           )}
@@ -782,7 +810,7 @@ function TaskCard({ task, members, onClick }) {
         <span className="member-chip"><Icon.User /> {memberName}</span>
         {task.comments?.length > 0 && <span className="member-chip"><Icon.Comment /> {task.comments.length}</span>}
         {dl && (
-          <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "#EDD5D5" : "var(--border)", background: dl.urgent ? "#FDF2F2" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
+          <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "var(--track-off-border)" : "var(--border)", background: dl.urgent ? "var(--track-off-bg)" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
             <Icon.Clock /> {formatDate(task.deadline)} · {dl.text}
           </span>
         )}
@@ -799,7 +827,7 @@ function AdminOverview({ tasks, members, onSelectMember, overviewFilter, onCardC
   const urgent = tasks.filter(t => t.urgent).length;
   const cards = [
     { key: "total", label: "Total", num: tasks.length, color: "var(--text)" },
-    { key: "not started", label: "Not Started", num: notStarted, color: "#C0392B" },
+    { key: "not started", label: "Not Started", num: notStarted, color: "var(--danger)" },
     { key: "in progress", label: "In Progress", num: inprog, color: "var(--info)" },
     { key: "completed", label: "Completed", num: done, color: "var(--success)" },
     { key: "urgent", label: "Urgent", num: urgent, color: "var(--danger)" },
@@ -909,7 +937,7 @@ function EmailInlineEdit({ currentUser, onSave, showToast }) {
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "20px 24px", marginBottom: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".08em", color: "var(--text3)", textTransform: "uppercase", marginBottom: 12 }}>Email Notifications</div>
       {!currentUser.email && (
-        <div style={{ background: "#FFF7ED", border: "1px solid #FCD34D", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#B45309", lineHeight: 1.5 }}>
+        <div style={{ background: "var(--attn-bg)", border: "1px solid var(--attn-border)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "var(--attn-text)", lineHeight: 1.5 }}>
           Add your email to receive notifications when projects are assigned or updated.
         </div>
       )}
@@ -1121,7 +1149,20 @@ function EmailPromptModal({ currentUser, onClose, onSave }) {
   );
 }
 
+function getInitialTheme() {
+  try { return localStorage.getItem("hiveboard_theme") || "light"; } catch { return "light"; }
+}
+
 export default function App() {
+  const [theme, setTheme] = useState(getInitialTheme);
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("hiveboard_theme", next);
+  };
+  // Apply theme on mount
+  React.useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [currentUser, setCurrentUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -1512,6 +1553,7 @@ export default function App() {
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 15 }}>{currentUser.name}</div>
               <div style={{ fontSize: 11, color: "var(--text3)" }}>{currentUser.id}</div>
             </div>
+            <div className="nav-pill" onClick={toggleTheme} title={theme === "dark" ? "Light Mode" : "Dark Mode"}>{theme === "dark" ? <Icon.Sun /> : <Icon.Moon />} <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span></div>
             <div className="nav-pill" onClick={refreshAll} title="Refresh"><Icon.Refresh /> <span>Refresh</span></div>
             <div className="nav-pill" onClick={logout} title="Sign Out"><Icon.Logout /> <span>Sign Out</span></div>
           </div>
@@ -1539,15 +1581,15 @@ export default function App() {
               {tasks.filter(t => t.needs_attention).length === 0
                 ? <div className="empty"><div className="empty-icon">✅</div><div className="empty-label">No projects need your attention</div></div>
                 : tasks.filter(t => t.needs_attention).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(t => (
-                    <div key={t.id} style={{ background: "var(--surface)", border: "1px solid #FCD34D", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
+                    <div key={t.id} style={{ background: "var(--surface)", border: "1px solid var(--attn-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
                       <div onClick={() => setSelectedTask(t)} style={{ cursor: "pointer" }}>
                         <TaskCard task={t} members={members} onClick={() => setSelectedTask(t)} />
                       </div>
-                      <div style={{ borderTop: "1px solid #FCD34D", padding: "10px 22px", background: "#FFFBEB", display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={{ fontSize: 12, color: "#B45309", fontWeight: 500 }}>🔔 Flagged for your attention</span>
+                      <div style={{ borderTop: "1px solid var(--attn-border)", padding: "10px 22px", background: "var(--attn-bg)", display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: 12, color: "var(--attn-text)", fontWeight: 500 }}>🔔 Flagged for your attention</span>
                         <button
                           onClick={e => { e.stopPropagation(); toggleAttention(t.id, false); }}
-                          style={{ padding: "6px 16px", borderRadius: 6, background: "#fff", color: "#B45309", border: "1px solid #FCD34D", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                          style={{ padding: "6px 16px", borderRadius: 6, background: "var(--surface)", color: "var(--attn-text)", border: "1px solid var(--attn-border)", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                           ✓ Dismiss
                         </button>
                       </div>
@@ -1641,14 +1683,14 @@ export default function App() {
                           <div style={{ position: "absolute", top: 10, right: 12, background: "var(--danger)", color: "#fff", borderRadius: 99, fontSize: 10, fontWeight: 700, padding: "2px 8px", zIndex: 1 }}>New</div>
                         )}
                         <div className={`task-card fadein ${t.urgent ? "urgent" : ""}`}
-                          style={{ background: isNew ? "#FFF5F5" : undefined, borderColor: isNew ? "#EDD5D5" : undefined, cursor: "pointer" }}>
+                          style={{ background: isNew ? "var(--new-bg)" : undefined, borderColor: isNew ? "var(--new-border)" : undefined, cursor: "pointer" }}>
                           <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-8 flex-wrap">
                               <StatusPill status={t.status} />
                               {t.urgent && <span className="tag tag-urgent"><Icon.Urgent /> Urgent</span>}
-                              {t.needs_attention && <span className="tag" style={{ background: "#FFF7ED", color: "#B45309", border: "1px solid #FCD34D" }}><Icon.Bell /> Needs Attention</span>}
+                              {t.needs_attention && <span className="tag" style={{ background: "var(--attn-bg)", color: "var(--attn-text)", border: "1px solid var(--attn-border)" }}><Icon.Bell /> Needs Attention</span>}
                               {t.track_status && (
-                                <span className="tag" style={t.track_status === "on_track" ? { background: "#F2FAF6", color: "#27664A", border: "1px solid #D5EDE3" } : { background: "#FDF2F2", color: "#C0392B", border: "1px solid #EDD5D5" }}>
+                                <span className="tag" style={t.track_status === "on_track" ? { background: "var(--track-on-bg)", color: "var(--track-on-text)", border: "1px solid var(--track-on-border)" } : { background: "var(--track-off-bg)", color: "var(--track-off-text)", border: "1px solid var(--track-off-border)" }}>
                                   {t.track_status === "on_track" ? <><Icon.Track /> On Track</> : <><Icon.OffTrack /> Off Track</>}
                                 </span>
                               )}
@@ -1661,7 +1703,7 @@ export default function App() {
                             <span className="member-chip"><Icon.User /> {members.find(m => m.id === t.assigned_to)?.name || t.assigned_to}</span>
                             {t.comments?.length > 0 && <span className="member-chip"><Icon.Comment /> {t.comments.length}</span>}
                             {t.deadline && (() => { const dl = deadlineLabel(t.deadline); return (
-                              <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "#EDD5D5" : "var(--border)", background: dl.urgent ? "#FDF2F2" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
+                              <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "var(--track-off-border)" : "var(--border)", background: dl.urgent ? "var(--track-off-bg)" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
                                 <Icon.Clock /> {formatDate(t.deadline)} · {dl.text}
                               </span>
                             ); })()}
@@ -1773,9 +1815,9 @@ export default function App() {
             </div>
             <div style={{ marginBottom: 20 }}>
               {attentionTasks.slice(0, 3).map(t => (
-                <div key={t.id} style={{ background: "#FFF7ED", border: "1px solid #FCD34D", borderRadius: 8, padding: "10px 14px", marginBottom: 8, textAlign: "left" }}>
+                <div key={t.id} style={{ background: "var(--attn-bg)", border: "1px solid var(--attn-border)", borderRadius: 8, padding: "10px 14px", marginBottom: 8, textAlign: "left" }}>
                   <div style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 15 }}>{t.title}</div>
-                  <div style={{ fontSize: 11, color: "#B45309", marginTop: 3 }}>
+                  <div style={{ fontSize: 11, color: "var(--attn-text)", marginTop: 3 }}>
                     {members.find(m => m.id === t.assigned_to)?.name || t.assigned_to} · {t.status}
                   </div>
                 </div>
