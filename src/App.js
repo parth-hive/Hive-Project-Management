@@ -62,18 +62,6 @@ function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
-// ── Biometric Authentication ──────────────────────────────────────────────────
-async function checkBiometricAvailable() {
-  // Only return true if platform supports it AND we're not on iOS Safari
-  // iOS requires full passkey registration flow which we don't support yet
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  if (isIOS) return false;
-  if (!window.PublicKeyCredential) return false;
-  try {
-    return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-  } catch { return false; }
-}
-
 // ── Push Notifications ────────────────────────────────────────────────────────
 const VAPID_PUBLIC_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY;
 
@@ -1090,26 +1078,20 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [filterMember, setFilterMember] = useState("all");
   const [toast, setToast] = useState(null);
-  const [sessionUser, setSessionUser] = useState(null);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
   const [showAttentionPopup, setShowAttentionPopup] = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
 
-  // Check for saved session and biometric support on mount
+  // Check for saved session on mount and auto-resume
   useEffect(() => {
     async function init() {
       const saved = loadSession();
-      const bioAvail = await checkBiometricAvailable();
-      setBiometricAvailable(bioAvail);
       if (saved) {
         // Re-verify user still exists in DB and get fresh role
         try {
           const fresh = await sb(`users?id=eq.${encodeURIComponent(saved.id)}&select=id,name,role,email`);
           if (!fresh || fresh.length === 0) { clearSession(); return; }
           const verifiedUser = safeUser(fresh[0]);
-          setSessionUser(verifiedUser);
-          setShowBiometricPrompt(true);
+          await resumeSession(verifiedUser);
         } catch { clearSession(); }
       }
     }
@@ -1172,48 +1154,9 @@ export default function App() {
     showToast("Email saved!");
   }
 
-  async function handleBiometricLogin() {
-    setAppLoading(true);
-    try {
-      // Use the browser's native user verification (Windows Hello / Touch ID on Mac)
-      const challenge = crypto.getRandomValues(new Uint8Array(32));
-      const credential = await navigator.credentials.get({
-        publicKey: {
-          challenge,
-          timeout: 60000,
-          userVerification: "required",
-          rpId: window.location.hostname,
-          allowCredentials: [],
-        },
-      }).catch(() => null);
-
-      if (credential) {
-        setShowBiometricPrompt(false);
-        await resumeSession(sessionUser);
-      } else {
-        // Biometric cancelled — fall back to password login
-        setShowBiometricPrompt(false);
-        setSessionUser(null);
-        clearSession();
-      }
-    } catch {
-      setShowBiometricPrompt(false);
-      setSessionUser(null);
-      clearSession();
-    }
-    setAppLoading(false);
-  }
-
-  function skipBiometric() {
-    setShowBiometricPrompt(false);
-    setSessionUser(null);
-    clearSession();
-  }
-
   function logout() {
     clearSession();
     setCurrentUser(null); setUsers([]); setTasks([]); setPage("tasks");
-    setSessionUser(null); setShowBiometricPrompt(false);
   }
 
   async function createTask(form) {
@@ -1401,51 +1344,6 @@ export default function App() {
         { id: "completed",  label: "Completed",        icon: <Icon.Track /> },
         { id: "settings",   label: "My Account",       icon: <Icon.User /> },
       ];
-
-  // ── Biometric Prompt ──────────────────────────────────────────────────────
-  if (showBiometricPrompt && sessionUser) {
-    return (
-      <>
-        <style>{STYLES}</style>
-        <div className="login-wrap">
-          <div className="login-card" style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>
-              {biometricAvailable ? "🔐" : "👋"}
-            </div>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>
-              Welcome back,
-            </div>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 28, fontWeight: 600, fontStyle: "italic", marginBottom: 4 }}>
-              {sessionUser.name}
-            </div>
-            <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 32 }}>{sessionUser.id}</div>
-
-            {biometricAvailable ? (
-              <>
-                <button className="btn-primary w-full" style={{ padding: 14, borderRadius: 6, fontSize: 15, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-                  onClick={handleBiometricLogin} disabled={appLoading}>
-                  {appLoading ? "Verifying…" : "🔐 Use Biometrics"}
-                </button>
-                <button className="btn-ghost w-full" style={{ padding: 12, borderRadius: 6 }} onClick={skipBiometric}>
-                  Use Password Instead
-                </button>
-              </>
-            ) : (
-              <>
-                <button className="btn-primary w-full" style={{ padding: 14, borderRadius: 6, fontSize: 15, marginBottom: 12 }}
-                  onClick={() => { setShowBiometricPrompt(false); resumeSession(sessionUser); }} disabled={appLoading}>
-                  {appLoading ? "Loading…" : `Continue as ${sessionUser.name}`}
-                </button>
-                <button className="btn-ghost w-full" style={{ padding: 12, borderRadius: 6 }} onClick={skipBiometric}>
-                  Sign in as someone else
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </>
-    );
-  }
 
   // ── Login ───────────────────────────────────────────────────────────────────
   if (!currentUser) {
