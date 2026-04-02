@@ -138,6 +138,7 @@ async function sendEmailNotification(payload) {
       headers: {
         "Content-Type": "application/json",
         apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
       },
       body: JSON.stringify(payload),
     });
