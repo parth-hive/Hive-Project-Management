@@ -1181,11 +1181,13 @@ export default function App() {
     const fresh = (updated || []).find(t => t.id === taskId);
     if (fresh && selectedTask?.id === taskId) setSelectedTask(fresh);
     if (oldTask) {
-      sendEmailNotification({
-        user_id: oldTask.assigned_to, type: "task_updated",
-        task: { title: oldTask.title },
-        changes: [{ field: "Status", from: oldTask.status, to: status }],
-      });
+      if (currentUser.id !== oldTask.assigned_to) {
+        sendEmailNotification({
+          user_id: oldTask.assigned_to, type: "task_updated",
+          task: { title: oldTask.title },
+          changes: [{ field: "Status", from: oldTask.status, to: status }],
+        });
+      }
       // Notify admin when a member marks a task as completed
       if (status === "completed" && currentUser.role !== "admin") {
         const admin = users.find(u => u.role === "admin");
@@ -1234,7 +1236,7 @@ export default function App() {
     const fresh = (updated || []).find(t => t.id === taskId);
     if (fresh && selectedTask?.id === taskId) setSelectedTask(fresh);
     showToast(deadline ? "Deadline updated!" : "Deadline removed.");
-    if (oldTask) {
+    if (oldTask && currentUser.id !== oldTask.assigned_to) {
       sendEmailNotification({
         user_id: oldTask.assigned_to, type: "task_updated",
         task: { title: oldTask.title },
@@ -1249,7 +1251,7 @@ export default function App() {
     const updated = await fetchTasks();
     const fresh = (updated || []).find(t => t.id === taskId);
     if (fresh && selectedTask?.id === taskId) setSelectedTask(fresh);
-    if (oldTask) {
+    if (oldTask && currentUser.id !== oldTask.assigned_to) {
       sendEmailNotification({
         user_id: oldTask.assigned_to, type: "task_updated",
         task: { title: oldTask.title },
@@ -1265,7 +1267,7 @@ export default function App() {
     if (fresh && selectedTask?.id === taskId) setSelectedTask(fresh);
     if (needs_attention) showToast("Admin has been notified ✓");
     const task = tasks.find(t => t.id === taskId);
-    if (task) {
+    if (task && currentUser.id !== task.assigned_to) {
       sendEmailNotification({
         user_id: task.assigned_to, type: "task_updated",
         task: { title: task.title },
