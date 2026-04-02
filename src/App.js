@@ -440,7 +440,7 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
 
         {!isAdmin && (
           <div className="mb-16">
-            <label>Is this task on track?</label>
+            <label>Is this project on track?</label>
             <div className="flex gap-8">
               <button onClick={() => onUpdateTrack(task.id, "on_track")} disabled={saving} style={{
                 padding: "7px 16px", borderRadius: 99, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
@@ -479,7 +479,7 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
           <div className="mb-16" style={{ background: "#FFF7ED", border: "1px solid #FCD34D", borderRadius: 8, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <div className="flex items-center gap-8">
               <Icon.Bell />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#B45309" }}>This task needs your attention</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#B45309" }}>This project needs your attention</span>
             </div>
             <button
               onClick={() => onToggleAttention(task.id, false)}
@@ -520,14 +520,14 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
   );
 }
 
-// ── Create Task Modal ─────────────────────────────────────────────────────────
+// ── Create Project Modal ─────────────────────────────────────────────────────────
 function CreateTaskModal({ members, lockedTo, onClose, onCreate }) {
   const [form, setForm] = useState({ title: "", description: "", deadline: "", urgent: false, assignedTo: lockedTo?.id || members[0]?.id || "" });
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function submit() {
-    if (!form.title.trim()) { setErr("Task title is required."); return; }
+    if (!form.title.trim()) { setErr("Project title is required."); return; }
     setSaving(true);
     try { await onCreate({ ...form, title: form.title.trim(), description: form.description.trim() }); }
     catch (e) { setErr(e.message); setSaving(false); }
@@ -536,7 +536,7 @@ function CreateTaskModal({ members, lockedTo, onClose, onCreate }) {
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal scrollbar fadein">
-        <div className="modal-title"><Icon.Plus /> New Task</div>
+        <div className="modal-title"><Icon.Plus /> New Project</div>
 
         {lockedTo && (
           <div style={{ background: "var(--accent-dim)", border: "1px solid var(--border2)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
@@ -546,7 +546,7 @@ function CreateTaskModal({ members, lockedTo, onClose, onCreate }) {
           </div>
         )}
 
-        <div className="field"><label>Task Title *</label><input placeholder="What needs to be done?" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus /></div>
+        <div className="field"><label>Project Title *</label><input placeholder="What needs to be done?" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus /></div>
         <div className="field"><label>Description</label><textarea placeholder="Add details, context, instructions…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
         <div className={lockedTo ? "" : "grid-2"}>
           <div className="field"><label>Deadline (optional)</label><input type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} /></div>
@@ -568,7 +568,7 @@ function CreateTaskModal({ members, lockedTo, onClose, onCreate }) {
         {err && <div style={{ color: "var(--danger)", fontSize: 12, marginBottom: 14 }}>{err}</div>}
         <div className="flex gap-8" style={{ justifyContent: "flex-end" }}>
           <button className="btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "Creating…" : "Create Task"}</button>
+          <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "Creating…" : "Create Project"}</button>
         </div>
       </div>
     </div>
@@ -738,7 +738,7 @@ function AdminOverview({ tasks, members, onSelectMember }) {
   const urgent = tasks.filter(t => t.urgent).length;
   return (
     <div className="fadein">
-      <div className="page-header"><div><div className="page-title"><em>Overview</em></div><div className="subtitle">{tasks.length} total tasks across all members</div></div></div>
+      <div className="page-header"><div><div className="page-title"><em>Overview</em></div><div className="subtitle">{tasks.length} total projects across all members</div></div></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         {[{ label: "Total", num: tasks.length, color: "var(--text)" }, { label: "Completed", num: done, color: "var(--success)" }, { label: "In Progress", num: inprog, color: "var(--info)" }, { label: "Urgent", num: urgent, color: "var(--danger)" }].map(s => (
           <div className="overview-stat" key={s.label}>
@@ -776,7 +776,7 @@ function AdminOverview({ tasks, members, onSelectMember }) {
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
                 <span style={{ fontSize: 11, color: "var(--text3)" }}>{md}/{mt.length} completed · {pct}%</span>
-                <span style={{ fontSize: 11, color: "var(--text3)" }}>View tasks →</span>
+                <span style={{ fontSize: 11, color: "var(--text3)" }}>View projects →</span>
               </div>
             </div>
           </div>
@@ -913,7 +913,7 @@ function DeleteMemberModal({ users, tasks, onClose, onDelete }) {
             <div style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
               This will permanently delete this member and{" "}
               <strong style={{ color: "var(--danger)" }}>
-                {memberTasks.length} task{memberTasks.length !== 1 ? "s" : ""}
+                {memberTasks.length} project{memberTasks.length !== 1 ? "s" : ""}
               </strong>{" "}
               assigned to them. This action cannot be undone.
             </div>
@@ -1079,12 +1079,12 @@ export default function App() {
 
   async function createTask(form) {
     await sb("tasks", { method: "POST", prefer: "return=representation", body: JSON.stringify({ title: form.title, description: form.description || null, deadline: form.deadline || null, urgent: form.urgent, assigned_to: form.assignedTo, status: "not started" }) });
-    await fetchTasks(); setShowCreate(false); showToast("Task created!");
+    await fetchTasks(); setShowCreate(false); showToast("Project created!");
     // Notify the assigned member
     sendPushNotification(
       form.assignedTo,
-      "New Task Assigned 📋",
-      `You have a new task: "${form.title}"`
+      "New Project Assigned 📋",
+      `You have a new project: "${form.title}"`
     );
   }
 
@@ -1104,14 +1104,14 @@ export default function App() {
 
   async function clearDoneTasks() {
     await sb("tasks?status=eq.completed", { method: "DELETE", prefer: "return=minimal" });
-    await fetchTasks(); showToast("Completed tasks cleared.");
+    await fetchTasks(); showToast("Completed projects cleared.");
   }
 
   async function deleteTask(taskId) {
     await sb(`tasks?id=eq.${taskId}`, { method: "DELETE", prefer: "return=minimal" });
     await fetchTasks();
     setSelectedTask(null);
-    showToast("Task deleted.");
+    showToast("Project deleted.");
   }
 
   async function updateDeadline(taskId, deadline) {
@@ -1191,12 +1191,12 @@ export default function App() {
   const navItems = isAdmin
     ? [
         { id: "overview",   label: "Overview",        icon: <Icon.Overview /> },
-        { id: "tasks",      label: "All Tasks",        icon: <Icon.Task /> },
+        { id: "tasks",      label: "All Projects",        icon: <Icon.Task /> },
         { id: "completed",  label: "Completed",        icon: <Icon.Track /> },
         { id: "attention",  label: "Needs Attention",  icon: <Icon.Bell />, badge: attentionTasks.length },
       ]
     : [
-        { id: "tasks",      label: "My Tasks",         icon: <Icon.Task /> },
+        { id: "tasks",      label: "My Projects",         icon: <Icon.Task /> },
         { id: "completed",  label: "Completed",        icon: <Icon.Track /> },
         { id: "settings",   label: "My Account",       icon: <Icon.User /> },
       ];
@@ -1349,7 +1349,7 @@ export default function App() {
               <div className="page-header">
                 <div>
                   <div className="page-title"><em>Needs Attention</em></div>
-                  <div className="subtitle">{tasks.filter(t => t.needs_attention).length} task{tasks.filter(t => t.needs_attention).length !== 1 ? "s" : ""} flagged by members</div>
+                  <div className="subtitle">{tasks.filter(t => t.needs_attention).length} project{tasks.filter(t => t.needs_attention).length !== 1 ? "s" : ""} flagged by members</div>
                 </div>
                 {tasks.filter(t => t.needs_attention).length > 1 && (
                   <button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
@@ -1359,15 +1359,20 @@ export default function App() {
                 )}
               </div>
               {tasks.filter(t => t.needs_attention).length === 0
-                ? <div className="empty"><div className="empty-icon">✅</div><div className="empty-label">No tasks need your attention</div></div>
+                ? <div className="empty"><div className="empty-icon">✅</div><div className="empty-label">No projects need your attention</div></div>
                 : tasks.filter(t => t.needs_attention).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(t => (
-                    <div key={t.id} style={{ position: "relative" }}>
-                      <TaskCard task={t} members={members} onClick={() => setSelectedTask(t)} />
-                      <button
-                        onClick={e => { e.stopPropagation(); toggleAttention(t.id, false); }}
-                        style={{ position: "absolute", top: 12, right: 12, padding: "4px 12px", borderRadius: 6, background: "#fff", color: "#B45309", border: "1px solid #FCD34D", fontWeight: 600, fontSize: 11, cursor: "pointer", zIndex: 1 }}>
-                        ✓ Dismiss
-                      </button>
+                    <div key={t.id} style={{ background: "var(--surface)", border: "1px solid #FCD34D", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
+                      <div onClick={() => setSelectedTask(t)} style={{ cursor: "pointer" }}>
+                        <TaskCard task={t} members={members} onClick={() => setSelectedTask(t)} />
+                      </div>
+                      <div style={{ borderTop: "1px solid #FCD34D", padding: "10px 22px", background: "#FFFBEB", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 12, color: "#B45309", fontWeight: 500 }}>🔔 Flagged for your attention</span>
+                        <button
+                          onClick={e => { e.stopPropagation(); toggleAttention(t.id, false); }}
+                          style={{ padding: "6px 16px", borderRadius: 6, background: "#fff", color: "#B45309", border: "1px solid #FCD34D", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                          ✓ Dismiss
+                        </button>
+                      </div>
                     </div>
                   ))
               }
@@ -1378,12 +1383,12 @@ export default function App() {
             <div className="fadein">
               <div className="page-header">
                 <div>
-                  <div className="page-title">{isAdmin ? <>All <em>Tasks</em></> : <>My <em>Tasks</em></>}</div>
-                  <div className="subtitle">{activeTasks.length} active task{activeTasks.length !== 1 ? "s" : ""}</div>
+                  <div className="page-title">{isAdmin ? <>All <em>Projects</em></> : <>My <em>Projects</em></>}</div>
+                  <div className="subtitle">{activeTasks.length} active project{activeTasks.length !== 1 ? "s" : ""}</div>
                 </div>
                 <div className="flex gap-8 items-center">
                   <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => setShowCreate(true)}>
-                    <Icon.Plus /> New Task
+                    <Icon.Plus /> New Project
                   </button>
                 </div>
               </div>
@@ -1404,7 +1409,7 @@ export default function App() {
               )}
 
               {activeTasks.length === 0
-                ? <div className="empty"><div className="empty-icon">🎉</div><div className="empty-label">All caught up! No active tasks.</div></div>
+                ? <div className="empty"><div className="empty-icon">🎉</div><div className="empty-label">All caught up! No active projects.</div></div>
                 : activeTasks.map(t => {
                     const isNew = !isAdmin && !t.seen_by_assignee;
                     return (
@@ -1452,7 +1457,7 @@ export default function App() {
               <div className="page-header">
                 <div>
                   <div className="page-title"><em>Completed</em></div>
-                  <div className="subtitle">{completedTasks.length} completed task{completedTasks.length !== 1 ? "s" : ""}</div>
+                  <div className="subtitle">{completedTasks.length} completed project{completedTasks.length !== 1 ? "s" : ""}</div>
                 </div>
                 {isAdmin && completedTasks.length > 0 && (
                   <button className="btn-danger" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={clearDoneTasks}>
@@ -1477,7 +1482,7 @@ export default function App() {
               )}
 
               {completedTasks.length === 0
-                ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-label">No completed tasks yet.</div></div>
+                ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-label">No completed projects yet.</div></div>
                 : completedTasks.map(t => <TaskCard key={t.id} task={t} members={members} onClick={() => setSelectedTask(t)} />)
               }
             </div>
