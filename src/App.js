@@ -829,11 +829,11 @@ function AdminOverview({ tasks, members, onSelectMember, overviewFilter, onCardC
   const overdue = tasks.filter(t => t.status !== "completed" && t.deadline && daysUntil(t.deadline) < 0).length;
   const cards = [
     { key: "total", label: "Total", num: tasks.length, color: "var(--text)" },
+    { key: "overdue", label: "Overdue", num: overdue, color: "var(--danger)" },
     { key: "not started", label: "Not Started", num: notStarted, color: "var(--danger)" },
     { key: "in progress", label: "In Progress", num: inprog, color: "var(--info)" },
     { key: "completed", label: "Completed", num: done, color: "var(--success)" },
     { key: "urgent", label: "Urgent", num: urgent, color: "var(--danger)" },
-    { key: "overdue", label: "Overdue", num: overdue, color: "var(--danger)" },
   ];
 
   const filteredTasks = overviewFilter
