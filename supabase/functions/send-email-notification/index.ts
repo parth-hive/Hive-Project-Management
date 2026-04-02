@@ -29,7 +29,7 @@ function wrap(badge: string, badgeColor: string, title: string, body: string) {
         <!-- Badge + Title -->
         <tr><td style="padding:32px 32px 0 32px">
           <div style="display:inline-block;padding:4px 12px;border-radius:4px;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:${badgeColor};background:${badgeColor}14;border:1px solid ${badgeColor}30">${badge}</div>
-          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:600;color:#1A1916;line-height:1.3;margin-top:16px;letter-spacing:-.02em"><em>${escapeHtml(title)}</em></div>
+          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:600;color:#1A1916;line-height:1.3;margin-top:16px;letter-spacing:-.02em">${escapeHtml(title)}</div>
         </td></tr>
 
         <!-- Body -->
