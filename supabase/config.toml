@@ -394,6 +394,12 @@ entrypoint = "./functions/send-push-notification/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/send-push-notification/*.html" ]
 
+[functions.check-deadline-reminders]
+enabled = true
+verify_jwt = false
+import_map = "./functions/check-deadline-reminders/deno.json"
+entrypoint = "./functions/check-deadline-reminders/index.ts"
+
 [functions.send-email-notification]
 enabled = true
 verify_jwt = false
