@@ -181,6 +181,7 @@ const Icon = {
   Bell:     () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M7 1.5a4 4 0 014 4v3l1 1H2l1-1v-3a4 4 0 014-4z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/><path d="M5.5 11.5a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>,
   Track:    () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" fill="none"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   OffTrack: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" fill="none"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  Settings: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="2.2"/><path d="M7 1.5v1M7 11.5v1M1.5 7h1M11.5 7h1M2.9 2.9l.7.7M10.4 10.4l.7.7M11.1 2.9l-.7.7M3.6 10.4l-.7.7"/></svg>,
   Moon:     () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12.5 7.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/></svg>,
   Sun:      () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.75 2.75l1.06 1.06M10.19 10.19l1.06 1.06M11.25 2.75l-1.06 1.06M3.81 10.19l-1.06 1.06"/></svg>,
 };
@@ -1457,6 +1458,7 @@ export default function App() {
         { id: "overview",   label: "Overview",        icon: <Icon.Overview /> },
         { id: "tasks",      label: "All Projects",        icon: <Icon.Task /> },
         { id: "attention",  label: "Needs Attention",  icon: <Icon.Bell />, badge: attentionTasks.length },
+        { id: "settings",   label: "Admin Settings",  icon: <Icon.Settings /> },
       ]
     : [
         { id: "tasks",      label: "My Projects",         icon: <Icon.Task /> },
@@ -1529,17 +1531,6 @@ export default function App() {
               )}
             </div>
           ))}
-
-          {isAdmin && (
-            <>
-              <div className="sidebar-section">Admin</div>
-              <div className="nav-pill" onClick={() => setShowReset(true)}><Icon.Key /> <span>Reset Password</span></div>
-              <div className="nav-pill" onClick={() => setShowRename(true)}><Icon.Edit /> <span>Rename Members</span></div>
-              <div className="nav-pill" onClick={() => setShowEditEmails(true)}><Icon.Bell /> <span>Edit Emails</span></div>
-              <div className="nav-pill" onClick={() => setShowAddMember(true)}><Icon.UserPlus /> <span>Add Member</span></div>
-              <div className="nav-pill" onClick={() => setShowDeleteMember(true)} style={{ color: "var(--danger)" }}><Icon.UserMinus /> <span>Remove Member</span></div>
-            </>
-          )}
 
           {!isAdmin && (
             <>
@@ -1749,6 +1740,43 @@ export default function App() {
                 ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-label">No completed projects yet.</div></div>
                 : completedTasks.map(t => <TaskCard key={t.id} task={t} members={members} onClick={() => setSelectedTask(t)} />)
               }
+            </div>
+          )}
+
+          {!loading && page === "settings" && isAdmin && (
+            <div className="fadein">
+              <div className="page-header">
+                <div>
+                  <div className="page-title">Admin <em>Settings</em></div>
+                  <div className="subtitle">Manage team members and access</div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {[
+                  { icon: <Icon.Key />, label: "Reset Password", desc: "Reset a member's password", onClick: () => setShowReset(true) },
+                  { icon: <Icon.Edit />, label: "Rename Members", desc: "Update member display names", onClick: () => setShowRename(true) },
+                  { icon: <Icon.Bell />, label: "Edit Emails", desc: "Manage notification emails", onClick: () => setShowEditEmails(true) },
+                  { icon: <Icon.UserPlus />, label: "Add Member", desc: "Invite a new team member", onClick: () => setShowAddMember(true) },
+                  { icon: <Icon.UserMinus />, label: "Remove Member", desc: "Remove a member from the team", onClick: () => setShowDeleteMember(true), danger: true },
+                ].map(item => (
+                  <div key={item.label} onClick={item.onClick}
+                    style={{
+                      background: "var(--surface)", border: `1px solid ${item.danger ? "var(--danger-dim)" : "var(--border)"}`,
+                      borderRadius: 10, padding: "20px 22px", cursor: "pointer",
+                      transition: "border-color .15s, box-shadow .15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = item.danger ? "var(--danger)" : "var(--border2)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(26,25,22,.06)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = item.danger ? "var(--danger-dim)" : "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                  >
+                    <div className="flex items-center gap-8 mb-8" style={{ color: item.danger ? "var(--danger)" : "var(--text)" }}>
+                      {item.icon}
+                      <span style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 17 }}>{item.label}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text3)" }}>{item.desc}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
