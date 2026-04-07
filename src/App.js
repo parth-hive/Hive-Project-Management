@@ -187,20 +187,23 @@ const Icon = {
 };
 
 const STATUS_COLORS_LIGHT = {
-  "not started": { bg: "#FDF2F2", border: "#EDD5D5", text: "#C0392B", dot: "#C0392B" },
-  "in progress": { bg: "#F2F5FD", border: "#D5DEF0", text: "#1A4A7A", dot: "#1A4A7A" },
-  "completed":   { bg: "#F2FAF6", border: "#D5EDE3", text: "#27664A", dot: "#27664A" },
+  "not started":     { bg: "#FDF2F2", border: "#EDD5D5", text: "#C0392B", dot: "#C0392B" },
+  "in progress":     { bg: "#F2F5FD", border: "#D5DEF0", text: "#1A4A7A", dot: "#1A4A7A" },
+  "pending_review":  { bg: "#FFF7ED", border: "#FCD34D", text: "#B45309", dot: "#B45309" },
+  "completed":       { bg: "#F2FAF6", border: "#D5EDE3", text: "#27664A", dot: "#27664A" },
 };
 const STATUS_COLORS_DARK = {
-  "not started": { bg: "rgba(192,57,43,.15)", border: "rgba(192,57,43,.3)", text: "#E74C3C", dot: "#E74C3C" },
-  "in progress": { bg: "rgba(52,152,219,.15)", border: "rgba(52,152,219,.3)", text: "#5DADE2", dot: "#5DADE2" },
-  "completed":   { bg: "rgba(39,174,96,.15)", border: "rgba(39,174,96,.3)", text: "#58D68D", dot: "#58D68D" },
+  "not started":     { bg: "rgba(192,57,43,.15)", border: "rgba(192,57,43,.3)", text: "#E74C3C", dot: "#E74C3C" },
+  "in progress":     { bg: "rgba(52,152,219,.15)", border: "rgba(52,152,219,.3)", text: "#5DADE2", dot: "#5DADE2" },
+  "pending_review":  { bg: "rgba(180,131,9,.12)", border: "rgba(252,211,77,.25)", text: "#FCD34D", dot: "#FCD34D" },
+  "completed":       { bg: "rgba(39,174,96,.15)", border: "rgba(39,174,96,.3)", text: "#58D68D", dot: "#58D68D" },
 };
 function getStatusColors() {
   return document.documentElement.getAttribute("data-theme") === "dark" ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
 }
 const STATUS_COLORS = new Proxy({}, { get: (_, key) => getStatusColors()[key] });
 const STATUS_LABELS = ["not started", "in progress", "completed"];
+const MEMBER_STATUS_LABELS = ["not started", "in progress", "submit for review"];
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600&display=swap');
@@ -365,9 +368,10 @@ function PasswordInput({ value, onChange, placeholder = "Password", onKeyDown })
 
 function StatusPill({ status }) {
   const c = STATUS_COLORS[status] || STATUS_COLORS["not started"];
+  const label = status === "pending_review" ? "pending review" : status;
   return (
     <span className="status-pill" style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
-      <span className="status-dot" style={{ background: c.dot }} />{status}
+      <span className="status-dot" style={{ background: c.dot }} />{label}
     </span>
   );
 }
@@ -474,19 +478,24 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
           <div className="mb-16">
             <label>Change Status</label>
             <div className="flex gap-8 flex-wrap">
-              {STATUS_LABELS.map(s => {
-                const c = STATUS_COLORS[s];
+              {MEMBER_STATUS_LABELS.map(s => {
+                const actualStatus = s === "submit for review" ? "pending_review" : s;
+                const isActive = task.status === actualStatus;
+                const c = STATUS_COLORS[actualStatus] || STATUS_COLORS["not started"];
                 return (
-                  <button key={s} onClick={() => changeStatus(s)} disabled={saving} style={{
+                  <button key={s} onClick={() => changeStatus(actualStatus)} disabled={saving || task.status === "pending_review"} style={{
                     padding: "7px 14px", borderRadius: 99, cursor: "pointer",
-                    background: task.status === s ? c.bg : "var(--surface2)",
-                    color: task.status === s ? c.text : "var(--text3)",
-                    border: `1.5px solid ${task.status === s ? c.border : "var(--border)"}`,
+                    background: isActive ? c.bg : "var(--surface2)",
+                    color: isActive ? c.text : "var(--text3)",
+                    border: `1.5px solid ${isActive ? c.border : "var(--border)"}`,
                     fontWeight: 600, fontSize: 12,
                   }}>{s}</button>
                 );
               })}
             </div>
+            {task.status === "pending_review" && (
+              <div style={{ fontSize: 12, color: "var(--attn-text)", marginTop: 8 }}>Awaiting admin review. You'll be notified once reviewed.</div>
+            )}
           </div>
         )}
 
@@ -820,18 +829,108 @@ function TaskCard({ task, members, onClick }) {
   );
 }
 
+// ── Pending Review Page ──────────────────────────────────────────────────────
+function PendingReviewPage({ tasks, members, onTaskClick, onApprove, onReject }) {
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleApprove(e, taskId) {
+    e.stopPropagation();
+    setSaving(true);
+    await onApprove(taskId);
+    setSaving(false);
+  }
+
+  async function handleReject(taskId) {
+    setSaving(true);
+    await onReject(taskId, rejectReason);
+    setRejectingId(null);
+    setRejectReason("");
+    setSaving(false);
+  }
+
+  return (
+    <div className="fadein">
+      <div className="page-header">
+        <div>
+          <div className="page-title"><em>Pending Review</em></div>
+          <div className="subtitle">{tasks.length} project{tasks.length !== 1 ? "s" : ""} awaiting your review</div>
+        </div>
+      </div>
+      {tasks.length === 0
+        ? <div className="empty"><div className="empty-icon">✅</div><div className="empty-label">No projects pending review</div></div>
+        : tasks.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(t => {
+            const memberName = members.find(m => m.id === t.assigned_to)?.name || t.assigned_to;
+            return (
+              <div key={t.id} style={{ background: "var(--surface)", border: "1px solid var(--attn-border)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
+                <div onClick={() => onTaskClick(t)} style={{ cursor: "pointer" }}>
+                  <TaskCard task={t} members={members} onClick={() => onTaskClick(t)} />
+                </div>
+                <div style={{ borderTop: "1px solid var(--attn-border)", padding: "12px 22px", background: "var(--attn-bg)" }}>
+                  <div className="flex items-center justify-between" style={{ flexWrap: "wrap", gap: 8 }}>
+                    <span style={{ fontSize: 12, color: "var(--attn-text)", fontWeight: 500 }}>Submitted by {memberName}</span>
+                    {rejectingId === t.id ? (
+                      <div className="flex gap-8 items-center" style={{ flex: 1, justifyContent: "flex-end" }}>
+                        <input
+                          placeholder="Reason (optional)"
+                          value={rejectReason}
+                          onChange={e => setRejectReason(e.target.value)}
+                          onClick={e => e.stopPropagation()}
+                          style={{ maxWidth: 220, padding: "6px 12px", fontSize: 12 }}
+                        />
+                        <button
+                          onClick={e => { e.stopPropagation(); handleReject(t.id); }}
+                          disabled={saving}
+                          style={{ padding: "6px 16px", borderRadius: 6, background: "var(--danger-dim)", color: "var(--danger)", border: "1px solid rgba(192,57,43,.2)", fontWeight: 600, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          {saving ? "…" : "Confirm Reject"}
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); setRejectingId(null); setRejectReason(""); }}
+                          style={{ padding: "6px 12px", borderRadius: 6, background: "var(--surface)", color: "var(--text3)", border: "1px solid var(--border)", fontSize: 12, cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-8">
+                        <button
+                          onClick={e => handleApprove(e, t.id)}
+                          disabled={saving}
+                          style={{ padding: "6px 16px", borderRadius: 6, background: "var(--success)", color: "#fff", border: "none", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                          ✓ Approve
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); setRejectingId(t.id); setRejectReason(""); }}
+                          disabled={saving}
+                          style={{ padding: "6px 16px", borderRadius: 6, background: "var(--danger-dim)", color: "var(--danger)", border: "1px solid rgba(192,57,43,.2)", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                          ✕ Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+      }
+    </div>
+  );
+}
+
 // ── Admin Overview ────────────────────────────────────────────────────────────
 function AdminOverview({ tasks, members, onSelectMember, overviewFilter, onCardClick, onTaskClick, clearDoneTasks }) {
   const done = tasks.filter(t => t.status === "completed").length;
   const inprog = tasks.filter(t => t.status === "in progress").length;
   const notStarted = tasks.filter(t => t.status === "not started").length;
+  const pendingReview = tasks.filter(t => t.status === "pending_review").length;
   const urgent = tasks.filter(t => t.urgent).length;
-  const overdue = tasks.filter(t => t.status !== "completed" && t.deadline && daysUntil(t.deadline) < 0).length;
+  const overdue = tasks.filter(t => t.status !== "completed" && t.status !== "pending_review" && t.deadline && daysUntil(t.deadline) < 0).length;
   const cards = [
     { key: "total", label: "Total", num: tasks.length, color: "var(--text)" },
     { key: "overdue", label: "Overdue", num: overdue, color: "var(--danger)" },
     { key: "not started", label: "Not Started", num: notStarted, color: "var(--danger)" },
     { key: "in progress", label: "In Progress", num: inprog, color: "var(--info)" },
+    { key: "pending_review", label: "Pending Review", num: pendingReview, color: "var(--attn-text)" },
     { key: "completed", label: "Completed", num: done, color: "var(--success)" },
     { key: "urgent", label: "Urgent", num: urgent, color: "var(--danger)" },
   ];
@@ -839,7 +938,7 @@ function AdminOverview({ tasks, members, onSelectMember, overviewFilter, onCardC
   const filteredTasks = overviewFilter
     ? overviewFilter === "total" ? tasks
       : overviewFilter === "urgent" ? tasks.filter(t => t.urgent)
-      : overviewFilter === "overdue" ? tasks.filter(t => t.status !== "completed" && t.deadline && daysUntil(t.deadline) < 0)
+      : overviewFilter === "overdue" ? tasks.filter(t => t.status !== "completed" && t.status !== "pending_review" && t.deadline && daysUntil(t.deadline) < 0)
       : tasks.filter(t => t.status === overviewFilter)
     : null;
 
@@ -850,7 +949,7 @@ function AdminOverview({ tasks, members, onSelectMember, overviewFilter, onCardC
   return (
     <div className="fadein">
       <div className="page-header"><div><div className="page-title"><em>Overview</em></div><div className="subtitle">{tasks.length} total projects across all members</div></div></div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 12, marginBottom: 16 }}>
         {cards.map(s => (
           <div className="overview-stat" key={s.key}
             onClick={() => onCardClick(overviewFilter === s.key ? null : s.key)}
@@ -905,7 +1004,7 @@ function AdminOverview({ tasks, members, onSelectMember, overviewFilter, onCardC
             {/* Bottom row: stats + link */}
             <div className="flex items-center justify-between" style={{ flexWrap: "wrap", gap: 6 }}>
               <div className="flex gap-8 flex-wrap">
-                {STATUS_LABELS.map(s => { const cnt = mt.filter(t => t.status === s).length; if (!cnt) return null; const c = STATUS_COLORS[s]; return <span key={s} className="tag" style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>{cnt} {s}</span>; })}
+                {[...STATUS_LABELS, "pending_review"].map(s => { const cnt = mt.filter(t => t.status === s).length; if (!cnt) return null; const c = STATUS_COLORS[s]; const label = s === "pending_review" ? "pending review" : s; return <span key={s} className="tag" style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>{cnt} {label}</span>; })}
                 {mt.filter(t => t.urgent).length > 0 && <span className="tag tag-urgent"><Icon.Urgent /> {mt.filter(t => t.urgent).length} urgent</span>}
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
@@ -1298,17 +1397,49 @@ export default function App() {
       if (isAdmin) {
         queueEmailChange(oldTask.assigned_to, oldTask.title, { field: "Status", from: oldTask.status, to: status });
       }
-      // Notify admin when a member marks a task as completed
-      if (status === "completed" && !isAdmin) {
+      // Notify admin when a member submits for review
+      if (status === "pending_review" && !isAdmin) {
         const admin = users.find(u => u.role === "admin");
         if (admin) {
           sendEmailNotification({
-            user_id: admin.id, type: "task_updated",
+            user_id: admin.id, type: "task_pending_review",
             task: { title: oldTask.title },
-            changes: [{ field: "Status", from: oldTask.status, to: status }, { field: "Completed by", to: currentUser.name || currentUser.id }],
+            submitted_by: currentUser.name || currentUser.id,
           });
         }
       }
+    }
+  }
+
+  async function approveTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    await sb(`tasks?id=eq.${taskId}`, { method: "PATCH", prefer: "return=representation", body: JSON.stringify({ status: "completed" }) });
+    await fetchTasks();
+    showToast("Project approved!");
+    if (task) {
+      sendEmailNotification({
+        user_id: task.assigned_to, type: "task_review_completed",
+        task: { title: task.title },
+        approved: true,
+      });
+    }
+  }
+
+  async function rejectTask(taskId, reason) {
+    const task = tasks.find(t => t.id === taskId);
+    await sb(`tasks?id=eq.${taskId}`, { method: "PATCH", prefer: "return=representation", body: JSON.stringify({ status: "in progress" }) });
+    if (reason && reason.trim()) {
+      await sb("comments", { method: "POST", prefer: "return=representation", body: JSON.stringify({ task_id: taskId, author: currentUser.id, text: `Review rejected: ${reason.trim()}` }) });
+    }
+    await fetchTasks();
+    showToast("Project sent back for revision.");
+    if (task) {
+      sendEmailNotification({
+        user_id: task.assigned_to, type: "task_review_completed",
+        task: { title: task.title },
+        approved: false,
+        reason: reason?.trim() || null,
+      });
     }
   }
 
@@ -1434,7 +1565,7 @@ export default function App() {
       return new Date(a.deadline) - new Date(b.deadline);
     }
     if (sortBy === "status") {
-      const order = { "not started": 0, "in progress": 1, "completed": 2 };
+      const order = { "not started": 0, "in progress": 1, "pending_review": 2, "completed": 3 };
       if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
     }
     if (sortBy === "urgent") {
@@ -1448,19 +1579,21 @@ export default function App() {
     return new Date(b.created_at) - new Date(a.created_at);
   };
 
-  let filteredActive = allVisible.filter(t => t.status !== "completed");
+  let filteredActive = allVisible.filter(t => t.status !== "completed" && t.status !== "pending_review");
   if (filterStatus !== "all") filteredActive = filteredActive.filter(t => t.status === filterStatus);
   if (filterUrgency === "urgent") filteredActive = filteredActive.filter(t => t.urgent);
   if (filterUrgency === "not_urgent") filteredActive = filteredActive.filter(t => !t.urgent);
   const activeTasks = [...filteredActive].sort(sortFn);
   const completedTasks = [...allVisible.filter(t => t.status === "completed")].sort(sortFn);
   const attentionTasks = tasks.filter(t => t.needs_attention);
+  const pendingReviewTasks = tasks.filter(t => t.status === "pending_review");
   const navItems = isAdmin
     ? [
-        { id: "overview",   label: "Overview",        icon: <Icon.Overview /> },
-        { id: "tasks",      label: "All Projects",        icon: <Icon.Task /> },
-        { id: "attention",  label: "Needs Attention",  icon: <Icon.Bell />, badge: attentionTasks.length },
-        { id: "settings",   label: "Admin Settings",  icon: <Icon.Settings /> },
+        { id: "overview",       label: "Overview",          icon: <Icon.Overview /> },
+        { id: "tasks",          label: "All Projects",      icon: <Icon.Task /> },
+        { id: "pending_review", label: "Pending Review",    icon: <Icon.Clock />, badge: pendingReviewTasks.length },
+        { id: "attention",      label: "Needs Attention",   icon: <Icon.Bell />, badge: attentionTasks.length },
+        { id: "settings",       label: "Admin Settings",    icon: <Icon.Settings /> },
       ]
     : [
         { id: "tasks",      label: "My Projects",         icon: <Icon.Task /> },
@@ -1590,6 +1723,16 @@ export default function App() {
                   ))
               }
             </div>
+          )}
+
+          {!loading && page === "pending_review" && isAdmin && (
+            <PendingReviewPage
+              tasks={pendingReviewTasks}
+              members={members}
+              onTaskClick={setSelectedTask}
+              onApprove={approveTask}
+              onReject={rejectTask}
+            />
           )}
 
           {!loading && page === "tasks" && (

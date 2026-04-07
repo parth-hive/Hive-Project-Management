@@ -123,6 +123,63 @@ function commentAddedHtml(task: { title: string }, comment: { author: string; te
   return wrap("New Comment", "#27664A", task.title, body);
 }
 
+function taskPendingReviewHtml(task: { title: string }, submittedBy: string) {
+  const body = `
+    <div style="font-size:13px;color:#6B6860;line-height:1.7;margin-bottom:20px">
+      <strong style="color:#1A1916">${escapeHtml(submittedBy)}</strong> has submitted this project for your review.
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F4F0;border:1px solid #E8E6E0;border-radius:6px;overflow:hidden;margin-bottom:20px">
+      <tr>
+        <td style="padding:14px 18px">
+          <div style="font-family:'Inter',sans-serif;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#A8A49C;margin-bottom:6px">Status</div>
+          <div style="font-family:'Inter',sans-serif;font-size:13px;color:#B45309;font-weight:500">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#B45309;margin-right:6px;vertical-align:middle"></span>Pending Review
+          </div>
+        </td>
+      </tr>
+    </table>
+    <div style="text-align:center">
+      <span style="font-family:'Inter',sans-serif;font-size:12px;color:#A8A49C">Log in to Hiveboard to approve or reject.</span>
+    </div>`;
+
+  return wrap("Pending Review", "#B45309", task.title, body);
+}
+
+function taskReviewCompletedHtml(task: { title: string }, approved: boolean, reason?: string | null) {
+  const statusText = approved ? "Approved" : "Sent Back for Revision";
+  const statusColor = approved ? "#27664A" : "#C0392B";
+  const statusDot = approved ? "#27664A" : "#C0392B";
+
+  let body = `
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F4F0;border:1px solid #E8E6E0;border-radius:6px;overflow:hidden;margin-bottom:20px">
+      <tr>
+        <td style="padding:14px 18px">
+          <div style="font-family:'Inter',sans-serif;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#A8A49C;margin-bottom:6px">Review Result</div>
+          <div style="font-family:'Inter',sans-serif;font-size:13px;color:${statusColor};font-weight:600">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDot};margin-right:6px;vertical-align:middle"></span>${statusText}
+          </div>
+        </td>
+      </tr>
+    </table>`;
+
+  if (!approved && reason) {
+    body += `
+    <div style="background:#FDF2F2;border:1px solid #EDD5D5;border-left:2px solid #C0392B;border-radius:6px;padding:16px 18px;margin-bottom:20px">
+      <div style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#C0392B;margin-bottom:8px">Reason:</div>
+      <div style="font-family:'Inter',sans-serif;font-size:13px;color:#1A1916;line-height:1.7">${escapeHtml(reason)}</div>
+    </div>`;
+  }
+
+  body += `
+    <div style="text-align:center">
+      <span style="font-family:'Inter',sans-serif;font-size:12px;color:#A8A49C">${approved ? "Great work! The project has been marked as completed." : "Please review the feedback and update your project."}</span>
+    </div>`;
+
+  const badge = approved ? "Approved" : "Revision Needed";
+  const badgeColor = approved ? "#27664A" : "#C0392B";
+  return wrap(badge, badgeColor, task.title, body);
+}
+
 function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -144,7 +201,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { user_id, type, task, changes, comment } = await req.json();
+    const { user_id, type, task, changes, comment, submitted_by, approved, reason } = await req.json();
 
     // Look up user email
     const res = await fetch(
@@ -176,6 +233,14 @@ Deno.serve(async (req) => {
       case "comment_added":
         subject = `New Comment on: ${task.title}`;
         html = commentAddedHtml(task, comment);
+        break;
+      case "task_pending_review":
+        subject = `Pending Review: ${task.title}`;
+        html = taskPendingReviewHtml(task, submitted_by || "A team member");
+        break;
+      case "task_review_completed":
+        subject = approved ? `Project Approved: ${task.title}` : `Revision Needed: ${task.title}`;
+        html = taskReviewCompletedHtml(task, approved, reason);
         break;
       default:
         return new Response(JSON.stringify({ ok: false, reason: "unknown_type" }), {
