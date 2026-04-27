@@ -191,6 +191,9 @@ const Icon = {
   Settings: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="2.2"/><path d="M7 1.5v1M7 11.5v1M1.5 7h1M11.5 7h1M2.9 2.9l.7.7M10.4 10.4l.7.7M11.1 2.9l-.7.7M3.6 10.4l-.7.7"/></svg>,
   Moon:     () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12.5 7.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/></svg>,
   Sun:      () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.75 2.75l1.06 1.06M10.19 10.19l1.06 1.06M11.25 2.75l-1.06 1.06M3.81 10.19l-1.06 1.06"/></svg>,
+  Calendar: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3"/></svg>,
+  ChevronLeft:  () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2.5L4.5 7 9 11.5"/></svg>,
+  ChevronRight: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 2.5L9.5 7 5 11.5"/></svg>,
 };
 
 const STATUS_COLORS_LIGHT = {
@@ -340,6 +343,33 @@ const STYLES = `
   .toggle-switch input:checked+.toggle-slider{background:var(--accent)}
   .toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
   .toggle-switch input:disabled+.toggle-slider{opacity:.5;cursor:not-allowed}
+  .cal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .cal-month-label{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;letter-spacing:-.01em;min-width:200px;text-align:center}
+  .cal-nav-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .15s}
+  .cal-nav-btn:hover{border-color:var(--border2);color:var(--text);background:var(--surface2)}
+  .cal-grid{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden}
+  .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);background:var(--surface2);border-bottom:1px solid var(--border)}
+  .cal-weekday{padding:10px 8px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);text-align:center}
+  .cal-days{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cal-cell{position:relative;min-height:96px;padding:8px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+  .cal-cell:nth-child(7n){border-right:none}
+  .cal-cell:hover{background:var(--surface2)}
+  .cal-cell.other-month{background:var(--bg);color:var(--text3)}
+  .cal-cell.other-month .cal-daynum{color:var(--text3)}
+  .cal-cell.selected{background:var(--accent-dim);box-shadow:inset 0 0 0 2px var(--accent)}
+  .cal-daynum{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%}
+  .cal-cell.today .cal-daynum{background:var(--accent);color:var(--bg);font-weight:600}
+  .cal-dots{display:flex;flex-wrap:wrap;gap:3px}
+  .cal-dot{width:6px;height:6px;border-radius:50%}
+  .cal-more{font-size:10px;color:var(--text3);font-weight:500;line-height:1}
+  .cal-mini-task{font-size:11px;line-height:1.3;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-left:2px solid var(--border2);padding-left:5px;background:var(--surface2);border-radius:3px;padding:3px 5px;border-left-width:2px;border-left-style:solid}
+  .cal-selected-panel{margin-top:24px}
+  .cal-empty{padding:32px;text-align:center;color:var(--text3);font-size:13px;border:1px dashed var(--border);border-radius:var(--radius2)}
+  @media(max-width:720px){
+    .cal-cell{min-height:64px;padding:5px}
+    .cal-mini-task{display:none}
+    .cal-month-label{font-size:18px;min-width:140px}
+  }
 `;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -927,6 +957,134 @@ function PendingReviewPage({ tasks, members, onTaskClick, onApprove, onReject })
             );
           })
       }
+    </div>
+  );
+}
+
+// ── Calendar Page ─────────────────────────────────────────────────────────────
+function ymdLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function CalendarPage({ tasks, members, currentUser, onTaskClick }) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const [viewDate, setViewDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedYmd, setSelectedYmd] = useState(ymdLocal(today));
+
+  const dated = tasks.filter(t => t.deadline);
+  const byDay = {};
+  for (const t of dated) {
+    const key = String(t.deadline).slice(0, 10);
+    (byDay[key] ||= []).push(t);
+  }
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const startWeekday = firstOfMonth.getDay(); // 0 = Sun
+  const gridStart = new Date(year, month, 1 - startWeekday);
+  const cells = Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    return d;
+  });
+
+  const monthLabel = viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const todayYmd = ymdLocal(today);
+  const selectedTasks = (byDay[selectedYmd] || []).slice().sort((a, b) => {
+    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+    return (a.title || "").localeCompare(b.title || "");
+  });
+  const selectedDateLabel = (() => {
+    const [y, m, d] = selectedYmd.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  })();
+
+  function shiftMonth(delta) {
+    setViewDate(new Date(year, month + delta, 1));
+  }
+  function goToday() {
+    setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setSelectedYmd(todayYmd);
+  }
+
+  return (
+    <div className="fadein">
+      <div className="page-header">
+        <div>
+          <div className="page-title"><em>Calendar</em></div>
+          <div className="subtitle">{dated.length} project{dated.length !== 1 ? "s" : ""} with deadlines</div>
+        </div>
+      </div>
+
+      <div className="cal-toolbar">
+        <button className="btn-ghost" onClick={goToday} style={{ padding: "6px 14px", fontSize: 12 }}>Today</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button className="cal-nav-btn" onClick={() => shiftMonth(-1)} aria-label="Previous month"><Icon.ChevronLeft /></button>
+          <div className="cal-month-label">{monthLabel}</div>
+          <button className="cal-nav-btn" onClick={() => shiftMonth(1)} aria-label="Next month"><Icon.ChevronRight /></button>
+        </div>
+        <div style={{ width: 64 }} />
+      </div>
+
+      <div className="cal-grid">
+        <div className="cal-weekdays">
+          {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(w => <div key={w} className="cal-weekday">{w}</div>)}
+        </div>
+        <div className="cal-days">
+          {cells.map((d, i) => {
+            const key = ymdLocal(d);
+            const inMonth = d.getMonth() === month;
+            const isToday = key === todayYmd;
+            const isSelected = key === selectedYmd;
+            const dayTasks = byDay[key] || [];
+            return (
+              <div key={i}
+                className={`cal-cell ${inMonth ? "" : "other-month"} ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}
+                onClick={() => setSelectedYmd(key)}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span className="cal-daynum">{d.getDate()}</span>
+                  {dayTasks.length > 3 && <span className="cal-more">+{dayTasks.length - 3}</span>}
+                </div>
+                {dayTasks.slice(0, 2).map(t => {
+                  const colors = STATUS_COLORS[t.status] || {};
+                  return (
+                    <div key={t.id} className="cal-mini-task"
+                      style={{ borderLeftColor: colors.dot || "var(--border2)", color: inMonth ? "var(--text2)" : "var(--text3)" }}
+                      title={t.title}>
+                      {t.title}
+                    </div>
+                  );
+                })}
+                {dayTasks.length > 2 && (
+                  <div className="cal-dots">
+                    {dayTasks.slice(2, 8).map(t => {
+                      const colors = STATUS_COLORS[t.status] || {};
+                      return <span key={t.id} className="cal-dot" style={{ background: colors.dot || "var(--border2)" }} />;
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="cal-selected-panel">
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+          {selectedDateLabel}
+          <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "var(--text3)", fontWeight: 400, marginLeft: 10 }}>
+            {selectedTasks.length} project{selectedTasks.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+        {selectedTasks.length === 0
+          ? <div className="cal-empty">No projects with deadlines on this day.</div>
+          : selectedTasks.map(t => <TaskCard key={t.id} task={t} members={members} onClick={() => onTaskClick(t)} />)
+        }
+      </div>
     </div>
   );
 }
@@ -1646,12 +1804,14 @@ export default function App() {
     ? [
         { id: "overview",       label: "Overview",          icon: <Icon.Overview /> },
         { id: "tasks",          label: "All Projects",      icon: <Icon.Task /> },
+        { id: "calendar",       label: "Calendar",          icon: <Icon.Calendar /> },
         { id: "pending_review", label: "Pending Review",    icon: <Icon.Clock />, badge: pendingReviewTasks.length },
         { id: "attention",      label: "Needs Attention",   icon: <Icon.Bell />, badge: attentionTasks.length },
         { id: "settings",       label: "Admin Settings",    icon: <Icon.Settings /> },
       ]
     : [
         { id: "tasks",      label: "My Projects",         icon: <Icon.Task /> },
+        { id: "calendar",   label: "Calendar",            icon: <Icon.Calendar /> },
         { id: "completed",  label: "Completed",        icon: <Icon.Track /> },
         { id: "settings",   label: "My Account",       icon: <Icon.User /> },
       ];
@@ -1744,6 +1904,15 @@ export default function App() {
           {loading && <div style={{ textAlign: "center", padding: "80px 0" }}><div className="spinner" /></div>}
 
           {!loading && page === "overview" && isAdmin && <AdminOverview tasks={tasks} members={members} onSelectMember={(memberId) => { setFilterMember(memberId); setPage("tasks"); }} overviewFilter={overviewFilter} onCardClick={setOverviewFilter} onTaskClick={setSelectedTask} clearDoneTasks={clearDoneTasks} />}
+
+          {!loading && page === "calendar" && (
+            <CalendarPage
+              tasks={isAdmin ? tasks : tasks.filter(t => t.assigned_to === currentUser.id)}
+              members={members}
+              currentUser={currentUser}
+              onTaskClick={setSelectedTask}
+            />
+          )}
 
           {!loading && page === "attention" && isAdmin && (
             <div className="fadein">
