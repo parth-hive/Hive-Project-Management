@@ -195,6 +195,7 @@ const Icon = {
   ChevronLeft:  () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2.5L4.5 7 9 11.5"/></svg>,
   ChevronRight: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 2.5L9.5 7 5 11.5"/></svg>,
   Nudge: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5.5v3M2 5.5h2L9 3v8L4 8.5H2zM10.5 5.2c.7.6.7 2 0 2.6"/></svg>,
+  Recurring: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 7a4.5 4.5 0 017.5-3.3M11.5 7a4.5 4.5 0 01-7.5 3.3"/><path d="M9.7 1.5l.3 2.2-2.2.3M4.3 12.5L4 10.3l2.2-.3"/></svg>,
 };
 
 const STATUS_COLORS_LIGHT = {
@@ -493,7 +494,7 @@ function TaskModal({ task, currentUser, members, onClose, onUpdateStatus, onAddC
           {task.recurring ? (
             <>
               <span className="member-chip" style={{ background: "var(--accent-dim)", borderColor: "var(--border2)" }}>
-                <Icon.Refresh /> Monthly · {ordinal(task.recurring_day)}
+                <Icon.Recurring /> Monthly · {ordinal(task.recurring_day)}
               </span>
               {dl && (
                 <span className="member-chip" style={{ color: dl.urgent ? "var(--danger)" : dl.color, borderColor: dl.urgent ? "var(--track-off-border)" : "var(--border)", background: dl.urgent ? "var(--track-off-bg)" : "var(--surface2)", fontWeight: dl.urgent ? 600 : 400 }}>
@@ -674,6 +675,18 @@ function CreateTaskModal({ members, lockedTo, onClose, onCreate }) {
 
         <div className="field"><label>Project Title *</label><input placeholder="What needs to be done?" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus /></div>
         <div className="field"><label>Description</label><textarea placeholder="Add details, context, instructions…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
+        <div className="field">
+          <label className="check-pill">
+            <input type="checkbox" checked={form.recurring} onChange={e => setForm(f => ({ ...f, recurring: e.target.checked }))} />
+            <span className="check-box"><Icon.Recurring /></span>
+            <span>Recurring (monthly)</span>
+          </label>
+          {form.recurring && (
+            <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 6, marginLeft: 28 }}>
+              If a month has fewer days than {form.recurring_day}, it falls on the last day of that month.
+            </div>
+          )}
+        </div>
         <div className={lockedTo ? "" : "grid-2"}>
           {form.recurring ? (
             <div className="field">
@@ -690,18 +703,6 @@ function CreateTaskModal({ members, lockedTo, onClose, onCreate }) {
               <select value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}>
                 {members.map(m => <option key={m.id} value={m.id}>{m.name} ({m.id})</option>)}
               </select>
-            </div>
-          )}
-        </div>
-        <div className="field">
-          <label className="check-pill">
-            <input type="checkbox" checked={form.recurring} onChange={e => setForm(f => ({ ...f, recurring: e.target.checked }))} />
-            <span className="check-box"><Icon.Refresh /></span>
-            <span>Recurring (monthly)</span>
-          </label>
-          {form.recurring && (
-            <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 6, marginLeft: 28 }}>
-              If a month has fewer days than {form.recurring_day}, it falls on the last day of that month.
             </div>
           )}
         </div>
@@ -897,7 +898,7 @@ function TaskCard({ task, members, onClick, onNudge }) {
           )}
           {task.recurring && (
             <span className="tag" style={{ background: "var(--accent-dim)", color: "var(--text2)", border: "1px solid var(--border2)" }}>
-              <Icon.Refresh /> Monthly · {ordinal(task.recurring_day)}
+              <Icon.Recurring /> Monthly · {ordinal(task.recurring_day)}
             </span>
           )}
         </div>
@@ -2197,7 +2198,7 @@ export default function App() {
                               )}
                               {t.recurring && (
                                 <span className="tag" style={{ background: "var(--accent-dim)", color: "var(--text2)", border: "1px solid var(--border2)" }}>
-                                  <Icon.Refresh /> Monthly · {ordinal(t.recurring_day)}
+                                  <Icon.Recurring /> Monthly · {ordinal(t.recurring_day)}
                                 </span>
                               )}
                             </div>
