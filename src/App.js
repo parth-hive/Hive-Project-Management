@@ -372,6 +372,35 @@ const STYLES = `
     .cal-mini-task{display:none}
     .cal-month-label{font-size:18px;min-width:140px}
   }
+  .projects-layout{display:flex;gap:20px;align-items:flex-start}
+  .projects-main{flex:1 1 auto;min-width:0;max-width:720px}
+  .projects-rail{width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;position:sticky;top:24px}
+  .rail-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:14px 16px}
+  .rail-card-title{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+  .rail-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .rail-stat{padding:10px 12px;border-radius:var(--radius);background:var(--surface2);border:1px solid var(--border)}
+  .rail-stat-num{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;line-height:1}
+  .rail-stat-label{font-size:9px;color:var(--text3);font-weight:600;margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
+  .rail-row{padding:9px 0;border-top:1px solid var(--border);cursor:pointer}
+  .rail-row:first-of-type{border-top:none;padding-top:2px}
+  .rail-row:hover .rail-row-title{color:var(--accent)}
+  .rail-row-title{font-size:12px;color:var(--text2);font-weight:500;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;transition:color .15s}
+  .rail-row-meta{font-size:10px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .rail-empty{font-size:11px;color:var(--text3);padding:6px 0}
+  .mini-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px}
+  .mini-cal-month{font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:600;color:var(--text)}
+  .mini-cal-nav{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);cursor:pointer;padding:0}
+  .mini-cal-nav:hover{color:var(--text);border-color:var(--border2)}
+  .mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .mini-cal-wd{font-size:9px;font-weight:600;color:var(--text3);text-align:center;padding:2px 0;text-transform:uppercase;letter-spacing:.05em}
+  .mini-cal-day{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);border-radius:6px;cursor:pointer;transition:background .15s;font-weight:500}
+  .mini-cal-day:hover{background:var(--surface2)}
+  .mini-cal-day.other-month{color:var(--text3);opacity:.45}
+  .mini-cal-day.today{background:var(--accent);color:var(--bg);font-weight:600}
+  .mini-cal-day.has-deadline:not(.today){box-shadow:inset 0 0 0 1px var(--border2)}
+  .mini-cal-dot{position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--accent)}
+  .mini-cal-day.today .mini-cal-dot{background:var(--bg)}
+  @media(max-width:1100px){.projects-rail{display:none}.projects-main{max-width:760px}}
 `;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -393,6 +422,20 @@ function deadlineLabel(d) {
   if (days === 1) return { text: "1 day left", color: "var(--danger)", urgent: true };
   if (days <= 3) return { text: `${days} days left`, color: "var(--attn-text)", urgent: false };
   return { text: `${days} days left`, color: "var(--text3)", urgent: false };
+}
+function relTime(d) {
+  if (!d) return "";
+  const ms = Date.now() - new Date(d).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  const wk = Math.floor(day / 7);
+  if (wk < 4) return `${wk}w ago`;
+  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 }
 
 function Toast({ msg, type, onDone }) {
@@ -1064,6 +1107,59 @@ function ymdInEst(date) {
   const m = String(est.getUTCMonth() + 1).padStart(2, "0");
   const d = String(est.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+function MiniCalendar({ tasks, onDayClick }) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const [viewDate, setViewDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const startWeekday = firstOfMonth.getDay();
+  const gridStart = new Date(year, month, 1 - startWeekday);
+  const cells = Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    return d;
+  });
+  const byDay = {};
+  for (const t of tasks) {
+    if (!t.deadline) continue;
+    const key = String(t.deadline).slice(0, 10);
+    byDay[key] = (byDay[key] || 0) + 1;
+  }
+  const todayYmd = ymdLocal(today);
+  const monthLabel = viewDate.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  function shift(delta) { setViewDate(new Date(year, month + delta, 1)); }
+  return (
+    <div>
+      <div className="mini-cal-head">
+        <button className="mini-cal-nav" onClick={() => shift(-1)} aria-label="Previous month"><Icon.ChevronLeft /></button>
+        <div className="mini-cal-month">{monthLabel}</div>
+        <button className="mini-cal-nav" onClick={() => shift(1)} aria-label="Next month"><Icon.ChevronRight /></button>
+      </div>
+      <div className="mini-cal-grid" style={{ marginBottom: 4 }}>
+        {["S", "M", "T", "W", "T", "F", "S"].map((w, i) => <div key={i} className="mini-cal-wd">{w}</div>)}
+      </div>
+      <div className="mini-cal-grid">
+        {cells.map((d, i) => {
+          const key = ymdLocal(d);
+          const inMonth = d.getMonth() === month;
+          const isToday = key === todayYmd;
+          const has = byDay[key];
+          return (
+            <div key={i}
+              className={`mini-cal-day ${inMonth ? "" : "other-month"} ${isToday ? "today" : ""} ${has ? "has-deadline" : ""}`}
+              onClick={() => onDayClick && onDayClick(key)}
+              title={has ? `${has} project${has !== 1 ? "s" : ""} due` : ""}>
+              {d.getDate()}
+              {has && <span className="mini-cal-dot" />}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function CalendarPage({ tasks, members, currentUser, onTaskClick, onNudge }) {
@@ -2115,6 +2211,8 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="projects-layout">
+                <div className="projects-main">
               {isAdmin && (
                 <div className="flex gap-8 flex-wrap mb-12">
                   {[{ id: "all", name: "All Members" }, ...members].map(m => (
@@ -2227,6 +2325,96 @@ export default function App() {
                     );
                   })
               }
+                </div>
+
+                <aside className="projects-rail">
+                  {(() => {
+                    const activeVisible = allVisible.filter(t => t.status !== "completed" && t.status !== "pending_review");
+                    const inProgressN = activeVisible.filter(t => t.status === "in progress").length;
+                    const notStartedN = activeVisible.filter(t => t.status === "not started").length;
+                    const urgentN = activeVisible.filter(t => t.urgent).length;
+                    const offTrackN = activeVisible.filter(t => t.track_status === "off_track").length;
+                    const needsAttnN = activeVisible.filter(t => t.needs_attention).length;
+                    const overdueN = activeVisible.filter(t => t.deadline && daysUntil(t.deadline) < 0).length;
+                    const upcoming = activeVisible
+                      .filter(t => t.deadline && daysUntil(t.deadline) <= 7)
+                      .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+                      .slice(0, 6);
+                    const recentActivity = isAdmin
+                      ? tasks
+                          .filter(t => t.comments && t.comments.length > 0)
+                          .map(t => {
+                            const lastComment = t.comments.reduce((latest, c) =>
+                              new Date(c.created_at) > new Date(latest.created_at) ? c : latest
+                            );
+                            return { task: t, lastComment };
+                          })
+                          .sort((a, b) => new Date(b.lastComment.created_at) - new Date(a.lastComment.created_at))
+                          .slice(0, 5)
+                      : [];
+                    return (
+                      <>
+                        {isAdmin && (
+                          <div className="rail-card">
+                            <div className="rail-card-title">At a glance</div>
+                            <div className="rail-stat-grid">
+                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--info)" }}>{inProgressN}</div><div className="rail-stat-label">In progress</div></div>
+                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--danger)" }}>{notStartedN}</div><div className="rail-stat-label">Not started</div></div>
+                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--danger)" }}>{urgentN}</div><div className="rail-stat-label">Urgent</div></div>
+                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--danger)" }}>{overdueN}</div><div className="rail-stat-label">Overdue</div></div>
+                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--track-off-text)" }}>{offTrackN}</div><div className="rail-stat-label">Off track</div></div>
+                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--attn-text)" }}>{needsAttnN}</div><div className="rail-stat-label">Needs attn</div></div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="rail-card">
+                          <div className="rail-card-title">Upcoming · 7 days</div>
+                          {upcoming.length === 0
+                            ? <div className="rail-empty">No deadlines in the next 7 days.</div>
+                            : upcoming.map(t => {
+                                const dl = deadlineLabel(t.deadline);
+                                return (
+                                  <div key={t.id} className="rail-row" onClick={() => setSelectedTask(t)}>
+                                    <div className="rail-row-title">{t.title}</div>
+                                    <div className="rail-row-meta">
+                                      <span>{members.find(m => m.id === t.assigned_to)?.name || t.assigned_to}</span>
+                                      <span style={{ color: dl.urgent ? "var(--danger)" : "var(--text3)", fontWeight: dl.urgent ? 600 : 500 }}>· {dl.text}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                          }
+                        </div>
+
+                        {isAdmin && (
+                          <div className="rail-card">
+                            <div className="rail-card-title">Recent activity</div>
+                            {recentActivity.length === 0
+                              ? <div className="rail-empty">No comments yet.</div>
+                              : recentActivity.map(({ task: t, lastComment: c }) => (
+                                  <div key={t.id} className="rail-row" onClick={() => setSelectedTask(t)}>
+                                    <div className="rail-row-title">{t.title}</div>
+                                    <div className="rail-row-meta">
+                                      <Icon.Comment />
+                                      <span>{members.find(m => m.id === c.author)?.name || users.find(u => u.id === c.author)?.name || c.author}</span>
+                                      <span>· {relTime(c.created_at)}</span>
+                                    </div>
+                                  </div>
+                                ))
+                            }
+                          </div>
+                        )}
+
+                        <div className="rail-card">
+                          <div className="rail-card-title">This month</div>
+                          <MiniCalendar tasks={allVisible} onDayClick={() => setPage("calendar")} />
+                        </div>
+                      </>
+                    );
+                  })()}
+                </aside>
+              </div>
             </div>
           )}
 
