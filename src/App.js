@@ -1133,8 +1133,20 @@ function CalendarPage({ tasks, members, currentUser, onTaskClick, onNudge }) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const [viewDate, setViewDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedYmd, setSelectedYmd] = useState(ymdLocal(today));
+  const [filterMember, setFilterMember] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
 
-  const dated = tasks.filter(t => t.deadline);
+  const isAdmin = currentUser?.role === "admin";
+
+  let visible = tasks;
+  if (isAdmin && filterMember !== "all") visible = visible.filter(t => t.assigned_to === filterMember);
+  if (filterStatus === "overdue") {
+    visible = visible.filter(t => t.status !== "completed" && t.status !== "pending_review" && t.deadline && daysUntil(t.deadline) < 0);
+  } else if (filterStatus !== "all") {
+    visible = visible.filter(t => t.status === filterStatus);
+  }
+
+  const dated = visible.filter(t => t.deadline);
   const byDay = {};
   for (const t of dated) {
     const key = String(t.deadline).slice(0, 10);
@@ -1188,6 +1200,51 @@ function CalendarPage({ tasks, members, currentUser, onTaskClick, onNudge }) {
           <button className="cal-nav-btn" onClick={() => shiftMonth(1)} aria-label="Next month"><Icon.ChevronRight /></button>
         </div>
         <div style={{ width: 64 }} />
+      </div>
+
+      <div className="flex gap-8 flex-wrap items-center mb-12">
+        {(() => {
+          const chevron = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'><path d='M3 4.5l3 3 3-3' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>\")";
+          const selStyle = (active, width) => ({
+            appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+            width, boxSizing: "border-box",
+            padding: "4px 20px 4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, lineHeight: 1.4,
+            backgroundColor: active ? "var(--accent-dim)" : "var(--surface2)",
+            backgroundImage: chevron,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 5px center",
+            backgroundSize: "9px",
+            color: active ? "var(--accent)" : "var(--text3)",
+            border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+            cursor: "pointer", outline: "none", transition: "all .15s",
+            textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden",
+          });
+          return (
+            <>
+              {isAdmin && (
+                <select value={filterMember} onChange={e => setFilterMember(e.target.value)} style={selStyle(filterMember !== "all", 110)}>
+                  <option value="all">All Members</option>
+                  {members.map(m => <option key={m.id} value={m.id}>{m.name} · {m.id}</option>)}
+                </select>
+              )}
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={selStyle(filterStatus !== "all", 125)}>
+                <option value="all">All Statuses</option>
+                <option value="not started">Not Started</option>
+                <option value="in progress">In Progress</option>
+                <option value="pending_review">Pending Review</option>
+                <option value="completed">Completed</option>
+                <option value="overdue">Overdue</option>
+              </select>
+              {(filterMember !== "all" || filterStatus !== "all") && (
+                <button onClick={() => { setFilterMember("all"); setFilterStatus("all"); }} style={{
+                  padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, lineHeight: 1.4,
+                  background: "none", color: "var(--text3)", border: "1px solid var(--border)",
+                  cursor: "pointer", transition: "all .15s",
+                }}>Clear</button>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       <div className="cal-grid">
