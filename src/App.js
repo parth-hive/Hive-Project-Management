@@ -1743,8 +1743,7 @@ export default function App() {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [filterMember, setFilterMember] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterUrgency, setFilterUrgency] = useState("all");
+  const [glanceFilter, setGlanceFilter] = useState(null);
   const [sortBy, setSortBy] = useState("default");
   const [toast, setToast] = useState(null);
   const [showAttentionPopup, setShowAttentionPopup] = useState(false);
@@ -2098,9 +2097,12 @@ export default function App() {
   };
 
   let filteredActive = allVisible.filter(t => t.status !== "completed" && t.status !== "pending_review");
-  if (filterStatus !== "all") filteredActive = filteredActive.filter(t => t.status === filterStatus);
-  if (filterUrgency === "urgent") filteredActive = filteredActive.filter(t => t.urgent);
-  if (filterUrgency === "not_urgent") filteredActive = filteredActive.filter(t => !t.urgent);
+  if (glanceFilter === "in progress") filteredActive = filteredActive.filter(t => t.status === "in progress");
+  else if (glanceFilter === "not started") filteredActive = filteredActive.filter(t => t.status === "not started");
+  else if (glanceFilter === "urgent") filteredActive = filteredActive.filter(t => t.urgent);
+  else if (glanceFilter === "overdue") filteredActive = filteredActive.filter(t => t.deadline && daysUntil(t.deadline) < 0);
+  else if (glanceFilter === "off_track") filteredActive = filteredActive.filter(t => t.track_status === "off_track");
+  else if (glanceFilter === "needs_attn") filteredActive = filteredActive.filter(t => t.needs_attention);
   const activeTasks = [...filteredActive].sort(sortFn);
   const completedTasks = [...allVisible.filter(t => t.status === "completed")].sort(sortFn);
   const attentionTasks = tasks.filter(t => t.needs_attention);
@@ -2169,7 +2171,7 @@ export default function App() {
 
           <div className="sidebar-section">Navigation</div>
           {navItems.map(n => (
-            <div key={n.id} className={`nav-pill ${page === n.id ? "active" : ""}`} onClick={() => { setPage(n.id); if (n.id !== "overview") setOverviewFilter(null); if (n.id !== "tasks") { setFilterStatus("all"); setFilterUrgency("all"); setSortBy("default"); } }}
+            <div key={n.id} className={`nav-pill ${page === n.id ? "active" : ""}`} onClick={() => { setPage(n.id); if (n.id !== "overview") setOverviewFilter(null); if (n.id !== "tasks") { setGlanceFilter(null); setSortBy("default"); } }}
               style={{ position: "relative" }}>
               {n.icon}
               <span style={{ flex: 1 }}>{n.label}</span>
@@ -2281,44 +2283,19 @@ export default function App() {
 
               <div className="projects-layout">
                 <div className="projects-main">
-              {isAdmin && (
-                <div className="flex gap-8 flex-wrap mb-12">
-                  {[{ id: "all", name: "All Members" }, ...members].map(m => (
-                    <button key={m.id} onClick={() => setFilterMember(m.id)} style={{
-                      padding: "7px 14px", borderRadius: 99, cursor: "pointer",
-                      fontWeight: 600, fontSize: 12,
-                      background: filterMember === m.id ? "var(--accent-dim)" : "var(--surface2)",
-                      color: filterMember === m.id ? "var(--accent)" : "var(--text3)",
-                      border: `1.5px solid ${filterMember === m.id ? "var(--accent)" : "var(--border)"}`,
-                      transition: "all .15s",
-                    }}>{m.id === "all" ? "All Members" : `${m.name} · ${m.id}`}</button>
-                  ))}
-                </div>
-              )}
-
               <div className="flex gap-8 flex-wrap items-center mb-16">
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{
-                  padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  background: filterStatus !== "all" ? "var(--accent-dim)" : "var(--surface2)",
-                  color: filterStatus !== "all" ? "var(--accent)" : "var(--text3)",
-                  border: `1.5px solid ${filterStatus !== "all" ? "var(--accent)" : "var(--border)"}`,
-                  cursor: "pointer", outline: "none", transition: "all .15s",
-                }}>
-                  <option value="all">All Statuses</option>
-                  <option value="not started">Not Started</option>
-                  <option value="in progress">In Progress</option>
-                </select>
-                <select value={filterUrgency} onChange={e => setFilterUrgency(e.target.value)} style={{
-                  padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  background: filterUrgency !== "all" ? "var(--accent-dim)" : "var(--surface2)",
-                  color: filterUrgency !== "all" ? "var(--accent)" : "var(--text3)",
-                  border: `1.5px solid ${filterUrgency !== "all" ? "var(--accent)" : "var(--border)"}`,
-                  cursor: "pointer", outline: "none", transition: "all .15s",
-                }}>
-                  <option value="all">All Priority</option>
-                  <option value="urgent">Urgent Only</option>
-                  <option value="not_urgent">Not Urgent</option>
-                </select>
+                {isAdmin && (
+                  <select value={filterMember} onChange={e => setFilterMember(e.target.value)} style={{
+                    padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: filterMember !== "all" ? "var(--accent-dim)" : "var(--surface2)",
+                    color: filterMember !== "all" ? "var(--accent)" : "var(--text3)",
+                    border: `1.5px solid ${filterMember !== "all" ? "var(--accent)" : "var(--border)"}`,
+                    cursor: "pointer", outline: "none", transition: "all .15s",
+                  }}>
+                    <option value="all">All Members</option>
+                    {members.map(m => <option key={m.id} value={m.id}>{m.name} · {m.id}</option>)}
+                  </select>
+                )}
                 <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{
                   padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
                   background: sortBy !== "default" ? "var(--accent-dim)" : "var(--surface2)",
@@ -2331,8 +2308,8 @@ export default function App() {
                   <option value="status">Sort: Status</option>
                   <option value="urgent">Sort: Urgent First</option>
                 </select>
-                {(filterStatus !== "all" || filterUrgency !== "all" || sortBy !== "default") && (
-                  <button onClick={() => { setFilterStatus("all"); setFilterUrgency("all"); setSortBy("default"); }} style={{
+                {(glanceFilter !== null || sortBy !== "default") && (
+                  <button onClick={() => { setGlanceFilter(null); setSortBy("default"); }} style={{
                     padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
                     background: "none", color: "var(--text3)", border: "1.5px solid var(--border)",
                     cursor: "pointer", transition: "all .15s",
@@ -2422,19 +2399,31 @@ export default function App() {
                       : [];
                     return (
                       <>
-                        {isAdmin && (
-                          <div className="rail-card">
-                            <div className="rail-card-title">At a glance</div>
-                            <div className="rail-stat-grid">
-                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--info)" }}>{inProgressN}</div><div className="rail-stat-label">In progress</div></div>
-                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--danger)" }}>{notStartedN}</div><div className="rail-stat-label">Not started</div></div>
-                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--danger)" }}>{urgentN}</div><div className="rail-stat-label">Urgent</div></div>
-                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--danger)" }}>{overdueN}</div><div className="rail-stat-label">Overdue</div></div>
-                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--track-off-text)" }}>{offTrackN}</div><div className="rail-stat-label">Off track</div></div>
-                              <div className="rail-stat"><div className="rail-stat-num" style={{ color: "var(--attn-text)" }}>{needsAttnN}</div><div className="rail-stat-label">Needs attn</div></div>
+                        {isAdmin && (() => {
+                          const glanceCards = [
+                            { key: "in progress", label: "In progress", num: inProgressN, color: "var(--info)" },
+                            { key: "not started", label: "Not started", num: notStartedN, color: "var(--danger)" },
+                            { key: "urgent",      label: "Urgent",      num: urgentN,     color: "var(--danger)" },
+                            { key: "overdue",     label: "Overdue",     num: overdueN,    color: "var(--danger)" },
+                            { key: "off_track",   label: "Off track",   num: offTrackN,   color: "var(--track-off-text)" },
+                            { key: "needs_attn",  label: "Needs attn",  num: needsAttnN,  color: "var(--attn-text)" },
+                          ];
+                          return (
+                            <div className="rail-card">
+                              <div className="rail-card-title">At a glance</div>
+                              <div className="rail-stat-grid">
+                                {glanceCards.map(s => (
+                                  <div key={s.key} className="rail-stat"
+                                    onClick={() => setGlanceFilter(glanceFilter === s.key ? null : s.key)}
+                                    style={{ cursor: "pointer", outline: glanceFilter === s.key ? `2px solid ${s.color}` : "none", outlineOffset: -2, transition: "outline .15s" }}>
+                                    <div className="rail-stat-num" style={{ color: s.color }}>{s.num}</div>
+                                    <div className="rail-stat-label">{s.label}</div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
 
                         <div className="rail-card">
                           <div className="rail-card-title">Upcoming · 7 days</div>
